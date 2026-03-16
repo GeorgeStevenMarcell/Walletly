@@ -1,0 +1,30 @@
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/
+.agents/
+skills-lock.json
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── Build output ──────────────────────────────────────────────────────────────
+frontend/dist/
+backend/dist/
+
+# ── Nginx TLS certs ──────────────────────────────────────────────────────────
+nginx/certs/*.pem
+nginx/certs/*.key
+
+# ── Docker volumes (local) ───────────────────────────────────────────────────
+postgres_data/
+redis_data/
+
+# ── OS junk ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini

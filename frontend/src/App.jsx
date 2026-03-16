@@ -1,5 +1,27 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, Component } from "react";
 import { api, storage } from "./api.js";
+
+// ─── Error Boundary ──────────────────────────────────────────────────────────
+export class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error("[ErrorBoundary]", error, info); }
+  render() {
+    if (this.state.error) return (
+      <div style={{minHeight:"100vh",background:"#0a0f1e",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div style={{background:"#1e1e2e",borderRadius:16,padding:24,maxWidth:400,width:"100%",border:"1px solid #f8717155"}}>
+          <div style={{color:"#f87171",fontSize:18,fontWeight:700,marginBottom:8}}>Something went wrong</div>
+          <div style={{color:"#94a3b8",fontSize:13,marginBottom:16,wordBreak:"break-word"}}>{this.state.error?.message || "Unknown error"}</div>
+          <button onClick={()=>{this.setState({error:null});window.location.reload();}}
+            style={{background:"#22d3ee",color:"#0a0f1e",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
+            Reload App
+          </button>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
 
 // PWA meta is set in index.html
 
@@ -81,6 +103,7 @@ export default function App(){
   const [categories,   setCategories]   = useState([]);
   const [budgets,      setBudgets]      = useState([]);
   const [loading,      setLoading]      = useState(false);
+  const [loadError,    setLoadError]    = useState(null);
 
   const [page,    setPage]    = useState("dashboard");
   const [toast,   setToast]   = useState(null);
@@ -94,18 +117,31 @@ export default function App(){
   // ── Load wallets after login ───────────────────────────────────────────────
   useEffect(() => {
     if (!authUser) return;
+    setLoadError(null);
+    setLoading(true);
     api.getWallets().then(ws => {
-      setWallets(ws || []);
-      if (ws?.length && !activeWalletId) setActiveWalletId(ws[0].id);
-    }).catch(err => showToast(err.message, "error"));
+      console.log("[walletly] getWallets response:", ws);
+      if (!Array.isArray(ws) || !ws.length) {
+        setLoadError("No wallets found. Try logging out and registering again.");
+        setLoading(false);
+        return;
+      }
+      setWallets(ws);
+      if (!activeWalletId) setActiveWalletId(ws[0].id);
+    }).catch(err => {
+      console.error("[walletly] getWallets error:", err);
+      setLoadError(err.message || "Failed to load wallets");
+      setLoading(false);
+    });
   }, [authUser]);
 
   // ── Load wallet data when active wallet changes ───────────────────────────
   useEffect(() => {
     if (!activeWalletId) return;
     setLoading(true);
-    const wallet = wallets.find(w => w.id === activeWalletId);
-    const msd = wallet?.month_start_day || 1;
+    setLoadError(null);
+    const w = wallets.find(wl => wl.id === activeWalletId);
+    const msd = w?.month_start_day || 1;
     // Load last 3 months of transactions + current categories + current budgets
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0,10);
@@ -115,11 +151,14 @@ export default function App(){
       api.getCategories(activeWalletId),
       api.getBudgets(activeWalletId, todayStr().slice(0,7)),
     ]).then(([txns, cats, bdgs]) => {
+      console.log("[walletly] wallet data loaded:", { txns: txns?.length, cats: cats?.length, bdgs: bdgs?.length });
       setTransactions(txns || []);
       setCategories(cats || []);
       setBudgets(bdgs || []);
-    }).catch(err => showToast(err.message, "error"))
-      .finally(() => setLoading(false));
+    }).catch(err => {
+      console.error("[walletly] wallet data error:", err);
+      setLoadError(err.message || "Failed to load wallet data");
+    }).finally(() => setLoading(false));
   }, [activeWalletId]);
 
   // ── Convenience helpers that keep local state in sync with API ────────────
@@ -277,8 +316,25 @@ export default function App(){
   );
 
   if (loading || !wallet) return (
-    <div style={{minHeight:"100vh",background:"#0a0f1e",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{color:"#22d3ee",fontSize:16,fontWeight:600}}>Loading…</div>
+    <div style={{minHeight:"100vh",background:"#0a0f1e",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,padding:20}}>
+      {loadError ? (
+        <div style={{background:"#1e1e2e",borderRadius:16,padding:24,maxWidth:400,width:"100%",border:"1px solid #f8717155",textAlign:"center"}}>
+          <div style={{color:"#f87171",fontSize:16,fontWeight:700,marginBottom:8}}>Failed to load</div>
+          <div style={{color:"#94a3b8",fontSize:13,marginBottom:16}}>{loadError}</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+            <button onClick={()=>{setLoadError(null);setLoading(true);api.getWallets().then(ws=>{setWallets(ws||[]);if(ws?.length)setActiveWalletId(ws[0].id);}).catch(e=>setLoadError(e.message)).finally(()=>setLoading(false));}}
+              style={{background:"#22d3ee",color:"#0a0f1e",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
+              Retry
+            </button>
+            <button onClick={()=>{storage.clearToken();localStorage.removeItem("walletly_user");setAuthUser(null);setWallets([]);setActiveWalletId(null);}}
+              style={{background:"#1e293b",color:"#94a3b8",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{color:"#22d3ee",fontSize:16,fontWeight:600}}>Loading…</div>
+      )}
     </div>
   );
 
