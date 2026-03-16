@@ -1,0 +1,104 @@
+"use strict";
+const router = require("express").Router();
+const { query, withTransaction } = require("../db/postgres");
+const { authenticate, requireWalletMember } = require("../middleware/auth");
+const { invalidate } = require("../db/redis");
+
+router.use(authenticate);
+
+// GET /api/wallets
+router.get("/", async (req, res, next) => {
+  try {
+    const { rows } = await query(
+      `SELECT w.id, w.name, w.owner_id, w.month_start_day, w.day_start_hour, w.created_at,
+              json_agg(json_build_object(
+                'id', u.id, 'username', u.username, 'displayName', u.display_name
+              ) ORDER BY wm.joined_at) AS members
+       FROM wallets w
+       JOIN wallet_members wm ON wm.wallet_id = w.id
+       JOIN users u ON u.id = wm.user_id
+       WHERE w.id IN (SELECT wallet_id FROM wallet_members WHERE user_id=$1)
+       GROUP BY w.id ORDER BY w.created_at`,
+      [req.user.id]
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
+});
+
+// POST /api/wallets
+router.post("/", async (req, res, next) => {
+  const { name } = req.body ?? {};
+  if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+  try {
+    const wallet = await withTransaction(async (c) => {
+      const { rows: [w] } = await c.query(
+        `INSERT INTO wallets (name, owner_id) VALUES ($1,$2) RETURNING *`,
+        [name.trim(), req.user.id]
+      );
+      await c.query(
+        `INSERT INTO wallet_members (wallet_id, user_id) VALUES ($1,$2)`,
+        [w.id, req.user.id]
+      );
+      return w;
+    });
+    res.status(201).json(wallet);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/wallets/:walletId/settings
+router.patch("/:walletId/settings", requireWalletMember, async (req, res, next) => {
+  const { monthStartDay, dayStartHour } = req.body ?? {};
+  try {
+    const { rows: [w] } = await query(
+      `UPDATE wallets
+       SET month_start_day = COALESCE($1, month_start_day),
+           day_start_hour  = COALESCE($2, day_start_hour)
+       WHERE id=$3 AND owner_id=$4 RETURNING *`,
+      [monthStartDay ?? null, dayStartHour ?? null, req.walletId, req.user.id]
+    );
+    if (!w) return res.status(403).json({ error: "Only the owner can change settings" });
+    await invalidate(`wallet:${req.walletId}:*`);
+    res.json(w);
+  } catch (err) { next(err); }
+});
+
+// POST /api/wallets/:walletId/members  — invite by username
+router.post("/:walletId/members", requireWalletMember, async (req, res, next) => {
+  const { username } = req.body ?? {};
+  if (!username) return res.status(400).json({ error: "username is required" });
+  try {
+    const { rows: [wallet] } = await query(`SELECT owner_id FROM wallets WHERE id=$1`, [req.walletId]);
+    if (wallet.owner_id !== req.user.id)
+      return res.status(403).json({ error: "Only the owner can invite members" });
+
+    const { rows: [target] } = await query(
+      `SELECT id, username, display_name FROM users WHERE username=$1`,
+      [username.toLowerCase().trim()]
+    );
+    if (!target) return res.status(404).json({ error: "User not found" });
+
+    await query(
+      `INSERT INTO wallet_members (wallet_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+      [req.walletId, target.id]
+    );
+    await invalidate(`wallet:${req.walletId}:*`);
+    res.status(201).json({ id: target.id, username: target.username, displayName: target.display_name });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/wallets/:walletId/members/:userId
+router.delete("/:walletId/members/:userId", requireWalletMember, async (req, res, next) => {
+  const { userId } = req.params;
+  try {
+    const { rows: [wallet] } = await query(`SELECT owner_id FROM wallets WHERE id=$1`, [req.walletId]);
+    if (wallet.owner_id === userId)
+      return res.status(400).json({ error: "Cannot remove the wallet owner" });
+    if (req.user.id !== wallet.owner_id && req.user.id !== userId)
+      return res.status(403).json({ error: "Not authorised" });
+    await query(`DELETE FROM wallet_members WHERE wallet_id=$1 AND user_id=$2`, [req.walletId, userId]);
+    await invalidate(`wallet:${req.walletId}:*`);
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+module.exports = router;
