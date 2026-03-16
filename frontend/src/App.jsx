@@ -471,8 +471,9 @@ function Dashboard({wallet,session,setPage,wallets,setActiveWalletId,user}){
           {userWallets.map((w,i)=>{
             const wm=w.settings?.monthStartDay||1;
             const wPk=getCurrentPeriodKey(wm);
-            const wInc=w.transactions.filter(t=>getPeriodKey(t.date,wm)===wPk&&t.type==="income").reduce((s,t)=>s+t.amount,0);
-            const wExp=w.transactions.filter(t=>getPeriodKey(t.date,wm)===wPk&&t.type==="expense").reduce((s,t)=>s+t.amount,0);
+            const wTxns=w.id===session.walletId?(wallet?.transactions||[]):[];
+            const wInc=wTxns.filter(t=>getPeriodKey(t.date,wm)===wPk&&t.type==="income").reduce((s,t)=>s+t.amount,0);
+            const wExp=wTxns.filter(t=>getPeriodKey(t.date,wm)===wPk&&t.type==="expense").reduce((s,t)=>s+t.amount,0);
             const GRAD=[["#f59e0b","#f97316"],["#10b981","#06b6d4"],["#3b82f6","#6366f1"],["#8b5cf6","#ec4899"]];
             return(
               <div key={w.id} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",borderBottom:i<userWallets.length-1?"1px solid #1e293b":"none",cursor:"pointer"}} onClick={()=>setActiveWalletId(w.id)}>
