@@ -4,17 +4,17 @@ version: "3.9"
 #  Walletly — Full Stack
 #
 #  Services
-#  ├── postgres   Primary data store
-#  ├── redis      Session store + API response cache + rate-limit counters
-#  ├── backend    Node/Express REST API  (port 4000, internal only)
-#  ├── frontend   Vite build → static files copied to shared volume
-#  └── nginx      Reverse proxy + static file server  (ports 80 / 443)
+#  ├── postgres      Primary data store
+#  ├── redis         Session store + API response cache + rate-limit counters
+#  ├── backend       Node/Express REST API  (internal only)
+#  ├── frontend      Vite build → static files copied to shared volume
+#  ├── nginx         Reverse proxy + static file server  (port 80)
+#  └── cloudflared   Cloudflare Tunnel
 #
 #  Quick start
 #  ─────────────
 #  cp .env.example .env          # fill in secrets
 #  docker compose up -d --build
-#  # App available at http://localhost
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -95,8 +95,6 @@ services:
       start_period: 20s
 
   # ── Frontend build ──────────────────────────────────────────────────────────
-  # Builds the Vite app and copies dist/ into the shared "frontend_dist" volume.
-  # The container exits after the build — nginx then serves the static files.
   frontend:
     build:
       context: ./frontend
@@ -106,7 +104,6 @@ services:
     container_name: walletly_frontend_build
     volumes:
       - frontend_dist:/app/dist
-    # One-shot build container; nginx picks up the volume
     restart: "no"
 
   # ── Nginx ───────────────────────────────────────────────────────────────────
@@ -120,25 +117,38 @@ services:
       frontend:
         condition: service_completed_successfully
     ports:
-      - "80:80"
-      - "443:443"
+      - "8082:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d/walletly.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/conf.d/walletly_locations.conf:/etc/nginx/conf.d/walletly_locations.conf:ro
-      - frontend_dist:/usr/share/nginx/html:ro          # static files from Vite build
-      - ./nginx/certs:/etc/nginx/certs:ro               # TLS certs (optional)
+#      - ./nginx/conf.d/walletly_locations.conf:/etc/nginx/conf.d/walletly_locations.conf:ro
+#      - ./nginx/conf.d/walletly_locations.conf.inc:/etc/nginx/conf.d/walletly_locations.conf:ro
+      - ./nginx/conf.d/walletly_locations.conf.inc:/etc/nginx/walletly_locations.conf:ro
+      - frontend_dist:/usr/share/nginx/html:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
 
+  # ── Cloudflare Tunnel ───────────────────────────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: walletly_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      nginx:
+        condition: service_healthy
+    networks:
+      - default
+
 volumes:
-  postgres_data:   # PostgreSQL WAL + data
-  redis_data:      # Redis AOF persistence
-  backend_logs:    # Express log files
-  frontend_dist:   # Compiled React/Vite static files shared with nginx
+  postgres_data:
+  redis_data:
+  backend_logs:
+  frontend_dist:
 
 networks:
   default:
