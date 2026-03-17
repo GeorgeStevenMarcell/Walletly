@@ -145,7 +145,7 @@ export function WalletProvider({ children }) {
     : null;
 
   const user = authUser ? { name: authUser.displayName, wallets: wallets.map((w) => w.id) } : null;
-  const session = authUser ? { username: authUser.username, walletId: activeWalletId } : null;
+  const session = authUser ? { id: authUser.id, username: authUser.username, walletId: activeWalletId } : null;
 
   // API helpers
   const showToastRef = { current: null }; // will be set by App

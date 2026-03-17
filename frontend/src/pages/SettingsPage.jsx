@@ -205,7 +205,7 @@ export default function SettingsPage() {
             <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 10 }}>My Wallets</div>
             {userWallets.map((w, i) => {
               const isEditing = editWalletId === w.id;
-              const isOwner = w.owner_id === session?.username;
+              const isOwner = w.owner_id === session?.id;
               return (
                 <div
                   key={w.id}
