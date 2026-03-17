@@ -61,6 +61,12 @@ export const api = {
   createWallet: (name) =>
     request("POST", "/wallets", { name }),
 
+  renameWallet: (walletId, name) =>
+    request("PATCH", `/wallets/${walletId}`, { name }),
+
+  deleteWallet: (walletId) =>
+    request("DELETE", `/wallets/${walletId}`),
+
   updateSettings: (walletId, settings) =>
     request("PATCH", `/wallets/${walletId}/settings`, settings),
 

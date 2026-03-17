@@ -3,6 +3,8 @@ const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt    = require("jsonwebtoken");
 const { query, withTransaction } = require("../db/postgres");
+const { validate } = require("../middleware/validate");
+const { registerBody, loginBody } = require("../schemas");
 
 const DEFAULT_EXPENSE_CATS = [
   { label:"Food & Dining",  icon:"🍽️", color:"#f59e0b", sort_order:0 },
@@ -31,20 +33,15 @@ function signToken(user) {
 }
 
 // ── POST /api/auth/register ──────────────────────────────────────────────────
-router.post("/register", async (req, res) => {
-  const { username, password, displayName } = req.body ?? {};
-  if (!username || !password || !displayName)
-    return res.status(400).json({ error: "username, password and displayName are required" });
-  if (password.length < 6)
-    return res.status(400).json({ error: "Password must be at least 6 characters" });
-
+router.post("/register", validate(registerBody), async (req, res) => {
+  const { username, password, displayName } = req.body;
   try {
     const hash = await bcrypt.hash(password, 12);
     const user = await withTransaction(async (client) => {
       const { rows:[u] } = await client.query(
         `INSERT INTO users (username, display_name, password_hash)
          VALUES ($1,$2,$3) RETURNING id, username, display_name`,
-        [username.toLowerCase().trim(), displayName.trim(), hash]
+        [username, displayName, hash]
       );
       const { rows:[w] } = await client.query(
         `INSERT INTO wallets (name, owner_id) VALUES ($1,$2) RETURNING id`,
@@ -80,10 +77,8 @@ router.post("/register", async (req, res) => {
 });
 
 // ── POST /api/auth/login ─────────────────────────────────────────────────────
-router.post("/login", async (req, res) => {
-  const { username, password } = req.body ?? {};
-  if (!username || !password)
-    return res.status(400).json({ error: "username and password are required" });
+router.post("/login", validate(loginBody), async (req, res) => {
+  const { username, password } = req.body;
   try {
     const { rows } = await query(
       `SELECT id, username, display_name, password_hash FROM users WHERE username=$1`,

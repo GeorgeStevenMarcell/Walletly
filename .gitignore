@@ -7,6 +7,7 @@
 .claude/
 .agents/
 skills-lock.json
+CLAUDE.md
 
 # ── Node ──────────────────────────────────────────────────────────────────────
 node_modules/

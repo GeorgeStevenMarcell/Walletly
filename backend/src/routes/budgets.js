@@ -3,6 +3,8 @@ const router = require("express").Router({ mergeParams: true });
 const { query } = require("../db/postgres");
 const { authenticate, requireWalletMember } = require("../middleware/auth");
 const { cached, invalidate } = require("../db/redis");
+const { validate, validateQuery } = require("../middleware/validate");
+const { createCategoryBody, upsertBudgetBody, budgetQuery, statsQuery } = require("../schemas");
 
 router.use(authenticate, requireWalletMember);
 
@@ -23,16 +25,13 @@ router.get("/categories", async (req, res, next) => {
 });
 
 // POST /api/wallets/:walletId/categories
-router.post("/categories", async (req, res, next) => {
-  const { type, label, icon, color, sortOrder } = req.body ?? {};
-  if (!type || !label) return res.status(400).json({ error: "type and label are required" });
-  if (!["expense","income"].includes(type))
-    return res.status(400).json({ error: "type must be expense or income" });
+router.post("/categories", validate(createCategoryBody), async (req, res, next) => {
+  const { type, label, icon, color, sortOrder } = req.body;
   try {
     const { rows: [c] } = await query(
       `INSERT INTO categories (wallet_id, type, label, icon, color, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.walletId, type, label.trim(), icon || "📦", color || "#6b7280", sortOrder ?? 0]
+      [req.walletId, type, label, icon, color, sortOrder]
     );
     await invalidate(`wallet:${req.walletId}:categories`);
     res.status(201).json(c);
@@ -52,7 +51,7 @@ router.delete("/categories/:id", async (req, res, next) => {
 // ── Budgets ───────────────────────────────────────────────────────────────────
 
 // GET /api/wallets/:walletId/budgets?period=YYYY-MM
-router.get("/budgets", async (req, res, next) => {
+router.get("/budgets", validateQuery(budgetQuery), async (req, res, next) => {
   const period = req.query.period || new Date().toISOString().slice(0,7);
   try {
     const rows = await cached(
@@ -70,18 +69,15 @@ router.get("/budgets", async (req, res, next) => {
 });
 
 // PUT /api/wallets/:walletId/budgets  — upsert
-router.put("/budgets", async (req, res, next) => {
-  const { categoryId, amount, period } = req.body ?? {};
-  if (!categoryId || amount === undefined || !period)
-    return res.status(400).json({ error: "categoryId, amount and period are required" });
-  if (+amount < 0) return res.status(400).json({ error: "amount cannot be negative" });
+router.put("/budgets", validate(upsertBudgetBody), async (req, res, next) => {
+  const { categoryId, amount, period } = req.body;
   try {
     const { rows: [b] } = await query(
       `INSERT INTO budgets (wallet_id, category_id, amount, period)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT (wallet_id, category_id, period)
        DO UPDATE SET amount=EXCLUDED.amount RETURNING *`,
-      [req.walletId, categoryId, Math.round(+amount), period]
+      [req.walletId, categoryId, Math.round(amount), period]
     );
     await invalidate(`wallet:${req.walletId}:budgets:*`);
     res.json(b);
@@ -100,9 +96,8 @@ router.delete("/budgets/:id", async (req, res, next) => {
 // ── Stats (dashboard summary, Redis-cached 60s) ───────────────────────────────
 
 // GET /api/wallets/:walletId/stats?from=YYYY-MM-DD&to=YYYY-MM-DD
-router.get("/stats", async (req, res, next) => {
+router.get("/stats", validateQuery(statsQuery), async (req, res, next) => {
   const { from, to } = req.query;
-  if (!from || !to) return res.status(400).json({ error: "from and to are required" });
   try {
     const rows = await cached(
       `wallet:${req.walletId}:stats:${from}:${to}`, 60,

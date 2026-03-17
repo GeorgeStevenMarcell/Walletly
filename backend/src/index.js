@@ -1,6 +1,9 @@
 "use strict";
 require("dotenv").config();
 
+const { validateEnv, setupGracefulShutdown } = require("./startup");
+validateEnv();
+
 const express     = require("express");
 const helmet      = require("helmet");
 const cors        = require("cors");
@@ -22,7 +25,21 @@ const app  = express();
 const PORT = process.env.PORT || 4000;
 
 // ── Security ─────────────────────────────────────────────────────────────────
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'"],
+      styleSrc:   ["'self'", "'unsafe-inline'"],
+      imgSrc:     ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc:    ["'self'"],
+      objectSrc:  ["'none'"],
+      frameAncestors: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
 app.set("trust proxy", 1); // required behind nginx
 
@@ -98,8 +115,10 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`[walletly] API ready on :${PORT} (${process.env.NODE_ENV || "development"})`);
 });
+
+setupGracefulShutdown(server, pool, redis);
 
 module.exports = app;
