@@ -144,8 +144,13 @@ export function WalletProvider({ children }) {
       }
     : null;
 
+  // Derive user ID from wallet members (reliable even if localStorage is stale)
+  const resolvedUserId = authUser?.id
+    || wallets.flatMap((w) => w.members || []).find((m) => m.username === authUser?.username)?.id
+    || null;
+
   const user = authUser ? { name: authUser.displayName, wallets: wallets.map((w) => w.id) } : null;
-  const session = authUser ? { id: authUser.id, username: authUser.username, walletId: activeWalletId } : null;
+  const session = authUser ? { id: resolvedUserId, username: authUser.username, walletId: activeWalletId } : null;
 
   // API helpers
   const showToastRef = { current: null }; // will be set by App
