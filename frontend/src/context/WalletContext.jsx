@@ -59,9 +59,10 @@ export function WalletProvider({ children }) {
       api.getBudgets(activeWalletId, todayStr().slice(0, 7)),
     ])
       .then(([txnRes, cats, bdgs]) => {
-        setTransactions(txnRes?.data ?? txnRes ?? []);
-        setCategories(cats || []);
-        setBudgets(bdgs || []);
+        const txnData = txnRes?.data ?? txnRes;
+        setTransactions(Array.isArray(txnData) ? txnData : []);
+        setCategories(Array.isArray(cats) ? cats : []);
+        setBudgets(Array.isArray(bdgs) ? bdgs : []);
       })
       .catch((err) => {
         console.error("[walletly] wallet data error:", err);
@@ -77,24 +78,25 @@ export function WalletProvider({ children }) {
     const from = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 10);
     const to = now.toISOString().slice(0, 10);
     const txnRes = await api.getTransactions(activeWalletId, { from, to });
-    setTransactions(txnRes?.data ?? txnRes ?? []);
+    const txnData = txnRes?.data ?? txnRes;
+    setTransactions(Array.isArray(txnData) ? txnData : []);
   }, [activeWalletId]);
 
   const refreshBudgets = useCallback(async () => {
     if (!activeWalletId) return;
     const bdgs = await api.getBudgets(activeWalletId, todayStr().slice(0, 7));
-    setBudgets(bdgs || []);
+    setBudgets(Array.isArray(bdgs) ? bdgs : []);
   }, [activeWalletId]);
 
   const refreshCategories = useCallback(async () => {
     if (!activeWalletId) return;
     const cats = await api.getCategories(activeWalletId);
-    setCategories(cats || []);
+    setCategories(Array.isArray(cats) ? cats : []);
   }, [activeWalletId]);
 
   const refreshWallets = useCallback(async () => {
     const ws = await api.getWallets();
-    setWallets(ws || []);
+    setWallets(Array.isArray(ws) ? ws : []);
   }, []);
 
   const retryLoad = useCallback(() => {
@@ -102,8 +104,9 @@ export function WalletProvider({ children }) {
     setLoading(true);
     api.getWallets()
       .then((ws) => {
-        setWallets(ws || []);
-        if (ws?.length) setActiveWalletId(ws[0].id);
+        const walletArr = Array.isArray(ws) ? ws : [];
+        setWallets(walletArr);
+        if (walletArr.length) setActiveWalletId(walletArr[0].id);
       })
       .catch((e) => setLoadError(e.message))
       .finally(() => setLoading(false));
@@ -195,9 +198,10 @@ export function WalletProvider({ children }) {
     deleteWallet: async (walletId) => {
       await api.deleteWallet(walletId);
       const ws = await api.getWallets();
-      setWallets(ws || []);
-      if (walletId === activeWalletId && ws?.length) {
-        setActiveWalletId(ws[0].id);
+      const walletArr = Array.isArray(ws) ? ws : [];
+      setWallets(walletArr);
+      if (walletId === activeWalletId && walletArr.length) {
+        setActiveWalletId(walletArr[0].id);
       }
     },
     switchWallet: (id) => setActiveWalletId(id),
