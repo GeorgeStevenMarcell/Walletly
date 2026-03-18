@@ -181,9 +181,9 @@ export default function Dashboard() {
   const handleToggleExclude = async (walletId, currentExclude) => {
     try {
       await api.toggleExcludeCombined(walletId, !currentExclude);
-      await apiHelpers.refreshWallets?.() || await api.getWallets();
-      // Force re-fetch combined data
-      fetchCombined();
+      // refreshWallets updates wallets state, which recreates fetchCombined via
+      // the useCallback dep, which triggers the useEffect to re-fetch combined data.
+      await apiHelpers.refreshWallets();
     } catch (err) {
       console.error("[walletly] toggle exclude error:", err);
     }
@@ -263,7 +263,7 @@ export default function Dashboard() {
             const wBal = !isAll && w.id === session?.walletId ? (inc - exp) : Number(w.period_balance ?? 0);
             const excluded = w.exclude_combined;
             return (
-              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", opacity: isAll && excluded ? 0.4 : 1 }}>
+              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", opacity: excluded ? 0.4 : 1 }}>
                 <div style={{ width: 38, height: 38, borderRadius: 11, background: `linear-gradient(135deg,${GRAD[i % 4][0]},${GRAD[i % 4][1]})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, cursor: "pointer" }}
                   onClick={() => { setViewMode("single"); switchWallet(w.id); }}>{"\u{1F4B3}"}</div>
                 <div style={{ flex: 1, cursor: "pointer" }} onClick={() => { setViewMode("single"); switchWallet(w.id); }}>
@@ -271,14 +271,14 @@ export default function Dashboard() {
                   <div style={{ color: "#475569", fontSize: 11 }}>{(w.members || []).length} member{(w.members || []).length !== 1 ? "s" : ""}</div>
                 </div>
                 <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{balVis ? fmtShort(wBal) : "\u2022\u2022\u2022\u2022"}</div>
-                {isAll && (
+                {hasMultiple && (
                   <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(w.id, excluded); }}
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: "2px 4px", color: excluded ? "#475569" : "#22d3ee", flexShrink: 0 }}
                     title={excluded ? "Include in combined view" : "Exclude from combined view"}>
                     {excluded ? "\u{1F441}\u200D\u{1F5E8}" : "\u{1F441}\uFE0F"}
                   </button>
                 )}
-                {!isAll && w.id === session?.walletId && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d3ee", flexShrink: 0 }} />}
+                {!hasMultiple && w.id === session?.walletId && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d3ee", flexShrink: 0 }} />}
               </div>
             );
           })}
