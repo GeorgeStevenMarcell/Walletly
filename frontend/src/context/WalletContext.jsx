@@ -224,7 +224,11 @@ export function WalletProvider({ children }) {
       }
     },
     switchWallet: (id) => {
+      if (id === activeWalletId) return;
       localStorage.setItem("walletly_active_wallet", id);
+      setTransactions([]);
+      setCategories([]);
+      setBudgets([]);
       setActiveWalletId(id);
     },
   };

@@ -49,7 +49,7 @@ function WalletShell() {
   const { page } = useNavigation();
   const [showTxn, setShowTxn] = useState(false);
 
-  if (loading || loadError || !wallet) {
+  if ((loading && !wallet) || loadError || !wallet) {
     return <LoadingScreen loading={loading} error={loadError} onRetry={retryLoad} onSignOut={signOut} />;
   }
 
