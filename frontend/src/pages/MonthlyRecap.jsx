@@ -5,7 +5,7 @@ import { getCurrentPeriodKey, getPeriodKey, periodLabel } from "../utils/period"
 import { fmt, fmtShort } from "../utils/format";
 
 export default function MonthlyRecap() {
-  const { wallet } = useWallet();
+  const { wallet, wallets, session, switchWallet } = useWallet();
 
   const msd = wallet.settings?.monthStartDay || 1;
   const cats = wallet.expenseCategories || DEFAULT_EXPENSE_CATEGORIES;
@@ -35,6 +35,13 @@ export default function MonthlyRecap() {
     <div style={{ background: "#0a0f1e", minHeight: "100%", padding: "16px 16px 120px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>Monthly Recap</div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        {wallets.length > 1 && (
+          <select style={{ background: "#131c2e", border: "1px solid #1e293b", color: "#94a3b8", borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
+            value={session?.walletId} onChange={(e) => switchWallet(e.target.value)}>
+            {wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
+        )}
         <select
           style={{
             background: "#131c2e",
@@ -54,6 +61,7 @@ export default function MonthlyRecap() {
             </option>
           ))}
         </select>
+        </div>
       </div>
 
       {txns.length === 0 ? (

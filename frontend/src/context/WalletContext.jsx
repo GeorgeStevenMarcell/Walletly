@@ -146,7 +146,7 @@ export function WalletProvider({ children }) {
         budgets: budgetMap,
         transactions: transactions.map((t) => ({
           ...t,
-          date: t.txn_date || t.date,
+          date: String(t.txn_date || t.date || "").slice(0, 10),
           category: t.category_id || t.category,
           addedBy: t.added_by || t.addedBy,
           amount: Number(t.amount),
@@ -230,7 +230,7 @@ export function WalletProvider({ children }) {
   };
 
   return (
-    <WalletContext.Provider value={{ wallet, wallets, user, session, loading, loadError, apiHelpers, retryLoad, setActiveWalletId }}>
+    <WalletContext.Provider value={{ wallet, wallets, user, session, loading, loadError, apiHelpers, retryLoad, switchWallet: apiHelpers.switchWallet }}>
       {children}
     </WalletContext.Provider>
   );

@@ -8,7 +8,7 @@ import { D } from "../styles/tokens";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function Transactions() {
-  const { wallet, apiHelpers } = useWallet();
+  const { wallet, wallets, session, switchWallet, apiHelpers } = useWallet();
   const { showToast } = useToast();
 
   const msd = wallet.settings?.monthStartDay || 1;
@@ -88,7 +88,15 @@ export default function Transactions() {
 
   return (
     <div style={{ background: "#0a0f1e", minHeight: "100%", padding: "16px 16px 120px" }}>
-      <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginBottom: 4 }}>Transactions</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>Transactions</div>
+        {wallets.length > 1 && (
+          <select style={{ background: "#131c2e", border: "1px solid #1e293b", color: "#94a3b8", borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
+            value={session?.walletId} onChange={(e) => switchWallet(e.target.value)}>
+            {wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
+        )}
+      </div>
       <div style={{ color: "#475569", fontSize: 12, marginBottom: 14 }}>{wallet.name}</div>
 
       {/* Filter tabs */}

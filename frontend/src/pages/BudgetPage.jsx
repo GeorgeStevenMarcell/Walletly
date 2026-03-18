@@ -9,7 +9,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import BudgetDetail from "./BudgetDetail";
 
 export default function BudgetPage() {
-  const { wallet, apiHelpers } = useWallet();
+  const { wallet, wallets, session, switchWallet, apiHelpers } = useWallet();
   const { showToast } = useToast();
 
   const msd = wallet.settings?.monthStartDay || 1;
@@ -97,9 +97,17 @@ export default function BudgetPage() {
             {startStr} \u2013 {endStr} · {daysLeft} days left
           </div>
         </div>
-        <button style={{ ...D.btn, padding: "7px 12px", fontSize: 12 }} onClick={() => setAdding(!adding)}>
-          {adding ? "\u2715" : "+ Add"}
-        </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {wallets.length > 1 && (
+            <select style={{ background: "#131c2e", border: "1px solid #1e293b", color: "#94a3b8", borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
+              value={session?.walletId} onChange={(e) => switchWallet(e.target.value)}>
+              {wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          )}
+          <button style={{ ...D.btn, padding: "7px 12px", fontSize: 12 }} onClick={() => setAdding(!adding)}>
+            {adding ? "\u2715" : "+ Add"}
+          </button>
+        </div>
       </div>
 
       {adding && (

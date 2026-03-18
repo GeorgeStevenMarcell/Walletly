@@ -10,7 +10,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function SettingsPage() {
   const { signOut } = useAuth();
-  const { wallet, wallets, session, apiHelpers } = useWallet();
+  const { wallet, wallets, session, switchWallet, apiHelpers } = useWallet();
   const { showToast } = useToast();
 
   const cats = wallet.expenseCategories || DEFAULT_EXPENSE_CATEGORIES;
@@ -159,7 +159,15 @@ export default function SettingsPage() {
 
   return (
     <div style={{ background: "#0a0f1e", minHeight: "100%", padding: "16px 16px 120px" }}>
-      <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", marginBottom: 14 }}>Account</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>Account</div>
+        {wallets.length > 1 && (
+          <select style={{ background: "#131c2e", border: "1px solid #1e293b", color: "#94a3b8", borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
+            value={session?.walletId} onChange={(e) => switchWallet(e.target.value)}>
+            {wallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+          </select>
+        )}
+      </div>
 
       <div
         style={{
@@ -244,12 +252,18 @@ export default function SettingsPage() {
               return (
                 <div
                   key={w.id}
+                  onClick={() => !isEditing && switchWallet(w.id)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
                     padding: "9px 0",
                     borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none",
+                    cursor: isEditing ? "default" : "pointer",
+                    background: w.id === wallet.id ? "#ffffff08" : "transparent",
+                    borderRadius: 8,
+                    paddingLeft: 6,
+                    paddingRight: 6,
                   }}
                 >
                   <div

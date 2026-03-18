@@ -7,7 +7,7 @@ import { getPeriodKey, getCurrentPeriodKey, periodLabel, shiftPeriodKey, getPeri
 import SpendChart from "../components/SpendChart";
 
 export default function Dashboard() {
-  const { wallet, wallets, user, session, setActiveWalletId } = useWallet();
+  const { wallet, wallets, user, session, switchWallet } = useWallet();
   const { setPage } = useNavigation();
 
   const msd = wallet.settings?.monthStartDay || 1;
@@ -69,7 +69,7 @@ export default function Dashboard() {
         </div>
         {userWallets.length > 1 && (
           <select style={{ background: "#131c2e", border: "1px solid #1e293b", color: "#94a3b8", borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
-            value={session?.walletId} onChange={(e) => setActiveWalletId(e.target.value)}>
+            value={session?.walletId} onChange={(e) => switchWallet(e.target.value)}>
             {userWallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         )}
@@ -109,7 +109,7 @@ export default function Dashboard() {
             const wBal = w.id === session?.walletId ? bal : Number(w.period_balance ?? 0);
             const GRAD = [["#f59e0b", "#f97316"], ["#10b981", "#06b6d4"], ["#3b82f6", "#6366f1"], ["#8b5cf6", "#ec4899"]];
             return (
-              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer" }} onClick={() => setActiveWalletId(w.id)}>
+              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer" }} onClick={() => switchWallet(w.id)}>
                 <div style={{ width: 38, height: 38, borderRadius: 11, background: `linear-gradient(135deg,${GRAD[i % 4][0]},${GRAD[i % 4][1]})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{"\u{1F4B3}"}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>{w.name}</div>
@@ -240,7 +240,7 @@ export default function Dashboard() {
           ) : recentTxns.map((t, i) => {
             const cat = allC.find((c) => c.id === t.category);
             return (
-              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < recentTxns.length - 1 ? "1px solid #1e293b" : "none" }}>
+              <div key={t.id} onClick={() => setPage("transactions")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < recentTxns.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer" }}>
                 <div style={{ width: 40, height: 40, borderRadius: 11, background: (cat?.color || "#6b7280") + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>{cat?.icon || "\u{1F4B1}"}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>{cat?.label || "Transaction"}</div>

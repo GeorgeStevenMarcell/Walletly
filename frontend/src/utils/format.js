@@ -19,6 +19,9 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 export function fmtDate(dateStr) {
   if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
+  // Handle ISO datetime strings by taking only the date portion
+  const iso = String(dateStr).slice(0, 10);
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return String(dateStr);
   return `${parseInt(d, 10)} ${MONTHS[parseInt(m, 10) - 1]} ${y}`;
 }
