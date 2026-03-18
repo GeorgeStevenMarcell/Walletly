@@ -13,7 +13,7 @@ export default function LoadingScreen({ loading, loadError, onRetry, onSignOut }
           </div>
         </div>
       ) : (
-        <div style={{ color: "#22d3ee", fontSize: 16, fontWeight: 600 }}>Loading\u2026</div>
+        <div style={{ color: "#22d3ee", fontSize: 16, fontWeight: 600 }}>Loading…</div>
       )}
     </div>
   );
