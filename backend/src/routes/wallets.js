@@ -13,6 +13,18 @@ router.get("/", async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT w.id, w.name, w.owner_id, w.month_start_day, w.day_start_hour, w.created_at,
+              COALESCE((
+                SELECT SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE -t.amount END)
+                FROM transactions t
+                WHERE t.wallet_id = w.id
+                  AND t.txn_date >= (
+                    CASE
+                      WHEN EXTRACT(DAY FROM CURRENT_DATE) >= w.month_start_day
+                      THEN DATE_TRUNC('month', CURRENT_DATE) + (w.month_start_day - 1) * INTERVAL '1 day'
+                      ELSE DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') + (w.month_start_day - 1) * INTERVAL '1 day'
+                    END
+                  )::date
+              ), 0) AS period_balance,
               json_agg(json_build_object(
                 'id', u.id, 'username', u.username, 'displayName', u.display_name
               ) ORDER BY wm.joined_at) AS members

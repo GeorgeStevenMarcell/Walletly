@@ -9,7 +9,9 @@ export function WalletProvider({ children }) {
   const { authUser } = useAuth();
 
   const [wallets, setWallets] = useState([]);
-  const [activeWalletId, setActiveWalletId] = useState(null);
+  const [activeWalletId, setActiveWalletId] = useState(
+    () => localStorage.getItem("walletly_active_wallet") || null
+  );
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [budgets, setBudgets] = useState([]);
@@ -36,7 +38,12 @@ export function WalletProvider({ children }) {
           return;
         }
         setWallets(ws);
-        setActiveWalletId((prev) => prev || ws[0].id);
+        setActiveWalletId((prev) => {
+          const valid = ws.find((w) => w.id === prev);
+          const id = valid ? prev : ws[0].id;
+          localStorage.setItem("walletly_active_wallet", id);
+          return id;
+        });
       })
       .catch((err) => {
         console.error("[walletly] getWallets error:", err);
@@ -209,7 +216,10 @@ export function WalletProvider({ children }) {
         setActiveWalletId(walletArr[0].id);
       }
     },
-    switchWallet: (id) => setActiveWalletId(id),
+    switchWallet: (id) => {
+      localStorage.setItem("walletly_active_wallet", id);
+      setActiveWalletId(id);
+    },
   };
 
   return (

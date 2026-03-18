@@ -106,11 +106,7 @@ export default function Dashboard() {
         </div>
         <div style={{ background: "#131c2e", borderRadius: 14, overflow: "hidden", border: "1px solid #1e293b" }}>
           {userWallets.map((w, i) => {
-            const wm = w.settings?.monthStartDay || w.month_start_day || 1;
-            const wPk = getCurrentPeriodKey(wm);
-            const wTxns = w.id === session?.walletId ? (wallet?.transactions || []) : [];
-            const wInc = wTxns.filter((t) => getPeriodKey(t.date, wm) === wPk && t.type === "income").reduce((s, t) => s + t.amount, 0);
-            const wExp = wTxns.filter((t) => getPeriodKey(t.date, wm) === wPk && t.type === "expense").reduce((s, t) => s + t.amount, 0);
+            const wBal = w.id === session?.walletId ? bal : Number(w.period_balance ?? 0);
             const GRAD = [["#f59e0b", "#f97316"], ["#10b981", "#06b6d4"], ["#3b82f6", "#6366f1"], ["#8b5cf6", "#ec4899"]];
             return (
               <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer" }} onClick={() => setActiveWalletId(w.id)}>
@@ -119,7 +115,7 @@ export default function Dashboard() {
                   <div style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>{w.name}</div>
                   <div style={{ color: "#475569", fontSize: 11 }}>{(w.members || []).length} member{(w.members || []).length !== 1 ? "s" : ""}</div>
                 </div>
-                <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{balVis ? fmtShort(wInc - wExp) : "\u2022\u2022\u2022\u2022"}</div>
+                <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{balVis ? fmtShort(wBal) : "\u2022\u2022\u2022\u2022"}</div>
                 {w.id === session?.walletId && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d3ee", flexShrink: 0 }} />}
               </div>
             );

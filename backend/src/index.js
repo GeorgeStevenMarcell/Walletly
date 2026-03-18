@@ -24,6 +24,8 @@ const budgetRoutes  = require("./routes/budgets");
 const app  = express();
 const PORT = process.env.PORT || 4000;
 
+app.set("etag", false); // disable ETag caching — API returns dynamic user data
+
 // ── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: {

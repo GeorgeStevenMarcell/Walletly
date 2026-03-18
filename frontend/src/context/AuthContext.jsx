@@ -6,7 +6,14 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [authUser, setAuthUser] = useState(() => {
     const t = storage.getToken();
-    return t ? JSON.parse(localStorage.getItem("walletly_user") || "null") : null;
+    if (!t) return null;
+    const user = JSON.parse(localStorage.getItem("walletly_user") || "null");
+    if (!user?.id) {
+      storage.clearToken();
+      localStorage.removeItem("walletly_user");
+      return null;
+    }
+    return user;
   });
 
   const login = useCallback(async (username, password) => {
@@ -26,6 +33,7 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(() => {
     storage.clearToken();
     localStorage.removeItem("walletly_user");
+    localStorage.removeItem("walletly_active_wallet");
     setAuthUser(null);
   }, []);
 
