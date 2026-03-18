@@ -234,7 +234,7 @@ export function WalletProvider({ children }) {
   };
 
   return (
-    <WalletContext.Provider value={{ wallet, wallets, user, session, loading, loadError, apiHelpers, retryLoad, switchWallet: apiHelpers.switchWallet }}>
+    <WalletContext.Provider value={{ wallet, wallets, user, session, loading, loadError, apiHelpers: { ...apiHelpers, refreshWallets }, retryLoad, switchWallet: apiHelpers.switchWallet }}>
       {children}
     </WalletContext.Provider>
   );

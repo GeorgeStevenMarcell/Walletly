@@ -40,9 +40,10 @@ CREATE TABLE IF NOT EXISTS wallets (
 
 -- ── Wallet members ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS wallet_members (
-    wallet_id  UUID        NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
-    user_id    UUID        NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
-    joined_at  TIMESTAMPTZ DEFAULT NOW(),
+    wallet_id        UUID        NOT NULL REFERENCES wallets(id) ON DELETE CASCADE,
+    user_id          UUID        NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+    exclude_combined BOOLEAN     NOT NULL DEFAULT false,
+    joined_at        TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (wallet_id, user_id)
 );
 

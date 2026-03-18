@@ -76,6 +76,9 @@ export const api = {
   removeMember: (walletId, userId) =>
     request("DELETE", `/wallets/${walletId}/members/${userId}`),
 
+  toggleExcludeCombined: (walletId, exclude) =>
+    request("PATCH", `/wallets/${walletId}/exclude-combined`, { exclude }),
+
   // ── Transactions ───────────────────────────────────────────────────────────
   getTransactions: (walletId, params = {}) => {
     const qs = new URLSearchParams(params).toString();

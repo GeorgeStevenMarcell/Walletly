@@ -65,6 +65,10 @@ exports.walletSettingsBody = z.object({
   dayStartHour: z.coerce.number().int().min(0).max(23).optional(),
 });
 
+exports.excludeCombinedBody = z.object({
+  exclude: z.boolean({ required_error: "exclude is required" }),
+});
+
 exports.inviteMemberBody = z.object({
   username: z
     .string({ required_error: "username is required" })

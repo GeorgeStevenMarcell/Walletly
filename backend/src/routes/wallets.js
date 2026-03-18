@@ -4,7 +4,7 @@ const { query, withTransaction } = require("../db/postgres");
 const { authenticate, requireWalletMember } = require("../middleware/auth");
 const { invalidate } = require("../db/redis");
 const { validate } = require("../middleware/validate");
-const { createWalletBody, renameWalletBody, walletSettingsBody, inviteMemberBody } = require("../schemas");
+const { createWalletBody, renameWalletBody, walletSettingsBody, inviteMemberBody, excludeCombinedBody } = require("../schemas");
 
 router.use(authenticate);
 
@@ -25,6 +25,8 @@ router.get("/", async (req, res, next) => {
                     END
                   )::date
               ), 0) AS period_balance,
+              (SELECT wm2.exclude_combined FROM wallet_members wm2
+               WHERE wm2.wallet_id = w.id AND wm2.user_id = $1) AS exclude_combined,
               json_agg(json_build_object(
                 'id', u.id, 'username', u.username, 'displayName', u.display_name
               ) ORDER BY wm.joined_at) AS members
@@ -96,6 +98,18 @@ router.delete("/:walletId", requireWalletMember, async (req, res, next) => {
     });
     await invalidate(`wallet:${req.walletId}:*`);
     res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/wallets/:walletId/exclude-combined
+router.patch("/:walletId/exclude-combined", requireWalletMember, validate(excludeCombinedBody), async (req, res, next) => {
+  try {
+    const { rows: [row] } = await query(
+      `UPDATE wallet_members SET exclude_combined = $1 WHERE wallet_id = $2 AND user_id = $3 RETURNING exclude_combined`,
+      [req.body.exclude, req.walletId, req.user.id]
+    );
+    if (!row) return res.status(404).json({ error: "Membership not found" });
+    res.json({ exclude_combined: row.exclude_combined });
   } catch (err) { next(err); }
 });
 
