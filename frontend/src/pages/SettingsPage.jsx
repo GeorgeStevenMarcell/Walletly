@@ -3,6 +3,8 @@ import { useAuth } from "../context/AuthContext";
 import { useWallet } from "../context/WalletContext";
 import { useToast } from "../hooks/useToast";
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, EMOJI_PALETTE, COLOR_PALETTE } from "../constants";
+import { getCurrentPeriodKey, getPeriodKey, todayStr } from "../utils/period";
+import { fmt } from "../utils/format";
 import { D } from "../styles/tokens";
 import ConfirmDialog from "../components/ConfirmDialog";
 
@@ -29,6 +31,14 @@ export default function SettingsPage() {
   const [editWalletId, setEditWalletId] = useState(null);
   const [editWalletName, setEditWalletName] = useState("");
   const [confirmDeleteWallet, setConfirmDeleteWallet] = useState(null);
+  const [adjBalance, setAdjBalance] = useState("");
+  const [adjNote, setAdjNote] = useState("Balance adjustment");
+  const [adjBusy, setAdjBusy] = useState(false);
+
+  const msd = settings.monthStartDay || 1;
+  const pk = getCurrentPeriodKey(msd);
+  const periodTxns = wallet.transactions.filter((t) => getPeriodKey(t.date, msd) === pk);
+  const currentBalance = periodTxns.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
 
   const userWallets = wallets || [];
   const members = (wallet._memberObjects || wallet.members || []).map((m) => {
@@ -112,6 +122,31 @@ export default function SettingsPage() {
       showToast("Wallet deleted");
     } catch (e) {
       showToast(e.message, "error");
+    }
+  }
+
+  async function adjustBalance() {
+    const target = Math.round(+adjBalance);
+    if (!adjBalance || isNaN(target)) return showToast("Enter a valid amount", "error");
+    const diff = target - currentBalance;
+    if (diff === 0) return showToast("Balance is already at that amount", "info");
+    const type = diff > 0 ? "income" : "expense";
+    const amount = Math.abs(diff);
+    setAdjBusy(true);
+    try {
+      await apiHelpers.addTransaction({
+        type,
+        amount,
+        category: null,
+        note: adjNote.trim() || "Balance adjustment",
+        date: todayStr(),
+      });
+      setAdjBalance("");
+      showToast("Balance adjusted");
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      setAdjBusy(false);
     }
   }
 
@@ -370,6 +405,42 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+          <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, marginBottom: 10, border: "1px solid #1e293b" }}>
+            <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 3 }}>Adjust Balance</div>
+            <div style={{ color: "#475569", fontSize: 11, marginBottom: 12 }}>
+              Current period balance: <span style={{ color: "#22d3ee", fontWeight: 700 }}>{fmt(currentBalance)}</span>
+            </div>
+            <label style={{ color: "#94a3b8", fontSize: 11, display: "block", marginBottom: 4 }}>Set balance to (IDR)</label>
+            <input
+              style={D.inp}
+              type="number"
+              placeholder="Target balance"
+              value={adjBalance}
+              onChange={(e) => setAdjBalance(e.target.value)}
+            />
+            <label style={{ color: "#94a3b8", fontSize: 11, display: "block", marginBottom: 4 }}>Note</label>
+            <input
+              style={D.inp}
+              placeholder="Reason (optional)"
+              value={adjNote}
+              onChange={(e) => setAdjNote(e.target.value)}
+            />
+            {adjBalance && !isNaN(+adjBalance) && Math.round(+adjBalance) !== currentBalance && (
+              <div style={{ background: "#0a0f1e", borderRadius: 9, padding: "8px 11px", marginBottom: 9, fontSize: 12, color: Math.round(+adjBalance) > currentBalance ? "#10b981" : "#f87171" }}>
+                {Math.round(+adjBalance) > currentBalance
+                  ? `\u2191 Will add ${fmt(Math.round(+adjBalance) - currentBalance)} income`
+                  : `\u2193 Will add ${fmt(currentBalance - Math.round(+adjBalance))} expense`}
+              </div>
+            )}
+            <button
+              style={{ ...D.btn, width: "100%", padding: 11, opacity: adjBusy ? 0.6 : 1 }}
+              onClick={adjustBalance}
+              disabled={adjBusy}
+            >
+              {adjBusy ? "Adjusting\u2026" : "Apply Adjustment"}
+            </button>
+          </div>
+
           <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b" }}>
             <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Invite Member</div>
             <div style={{ display: "flex", gap: 7 }}>

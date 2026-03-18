@@ -57,6 +57,9 @@ export function WalletProvider({ children }) {
     if (!activeWalletId) return;
     setLoading(true);
     setLoadError(null);
+    setTransactions([]);
+    setCategories([]);
+    setBudgets([]);
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 10);
     const to = now.toISOString().slice(0, 10);
@@ -169,6 +172,10 @@ export function WalletProvider({ children }) {
     deleteTransaction: async (id) => {
       await api.deleteTransaction(activeWalletId, id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
+    },
+    updateTransaction: async (id, data) => {
+      await api.updateTransaction(activeWalletId, id, data);
+      await refreshTransactions();
     },
     upsertBudget: async (categoryId, amount) => {
       const period = todayStr().slice(0, 7);

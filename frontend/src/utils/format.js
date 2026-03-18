@@ -14,3 +14,11 @@ export function fmtShort(n) {
   if (n >= 1_000) return "Rp " + (n / 1_000).toFixed(0) + "K";
   return fmt(n);
 }
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+export function fmtDate(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  return `${parseInt(d, 10)} ${MONTHS[parseInt(m, 10) - 1]} ${y}`;
+}

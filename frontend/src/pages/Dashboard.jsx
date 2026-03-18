@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useWallet } from "../context/WalletContext";
 import { useNavigation } from "../context/NavigationContext";
-import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, MONTHS } from "../constants";
-import { fmt, fmtShort } from "../utils/format";
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from "../constants";
+import { fmt, fmtShort, fmtDate } from "../utils/format";
 import { getPeriodKey, getCurrentPeriodKey, periodLabel, shiftPeriodKey, getPeriodSpend } from "../utils/period";
 import SpendChart from "../components/SpendChart";
 
@@ -244,7 +244,7 @@ export default function Dashboard() {
                 <div style={{ width: 40, height: 40, borderRadius: 11, background: (cat?.color || "#6b7280") + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19, flexShrink: 0 }}>{cat?.icon || "\u{1F4B1}"}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>{cat?.label || "Transaction"}</div>
-                  <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>{t.date.slice(5).replace("-", " ")} {MONTHS[parseInt(t.date.slice(5, 7)) - 1]} {t.note ? "\u00B7 " + t.note : ""}</div>
+                  <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>{fmtDate(t.date)}{t.note ? " \u00B7 " + t.note : ""}</div>
                 </div>
                 <div style={{ color: t.type === "income" ? "#10b981" : "#f87171", fontWeight: 700, fontSize: 13 }}>
                   {t.type === "income" ? "+" : "-"}{fmtShort(t.amount)}

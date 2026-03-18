@@ -1,9 +1,11 @@
 const tokens = {
   shell: {
-    display: "flex", flexDirection: "column", height: "100vh",
+    display: "flex", flexDirection: "column",
+    position: "fixed", top: 0, bottom: 0,
+    left: "50%", transform: "translateX(-50%)",
+    width: "100%", maxWidth: 500,
     background: "#0a0f1e", overflow: "hidden",
     fontFamily: "'Sora','Segoe UI',sans-serif", color: "#fff",
-    maxWidth: 500, margin: "0 auto", position: "relative",
   },
   statusBar: {
     height: "env(safe-area-inset-top,0px)", background: "#0a0f1e", flexShrink: 0,
