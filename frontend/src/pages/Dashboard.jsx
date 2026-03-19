@@ -8,46 +8,24 @@ import { getPeriodKey, getCurrentPeriodKey, periodLabel, shiftPeriodKey, getPeri
 import SpendChart from "../components/SpendChart";
 
 const GRAD = [["#f59e0b", "#f97316"], ["#10b981", "#06b6d4"], ["#3b82f6", "#6366f1"], ["#8b5cf6", "#ec4899"]];
-const VIEW_MODE_KEY = "walletly_view_mode";
 
 export default function Dashboard() {
-  const { wallet, wallets, user, session, switchWallet, apiHelpers } = useWallet();
+  const { wallet, wallets, user, session, switchWallet } = useWallet();
   const { setPage } = useNavigation();
 
   const userWallets = wallets || [];
   const hasMultiple = userWallets.length > 1;
 
-  const [viewMode, setViewMode] = useState(() => {
-    const saved = localStorage.getItem(VIEW_MODE_KEY);
-    if (saved === "all" || saved === "single") return saved;
-    // wallets haven't loaded yet on first render, default to "all" —
-    // the effect below will correct to "single" once wallets arrive if only 1.
-    return "all";
-  });
+  // Combined view is always active when user has 2+ wallets.
+  // Clicking a wallet card switches to that single wallet (sets isAll = false).
+  const [forcedSingleId, setForcedSingleId] = useState(null);
+  const isAll = hasMultiple && !forcedSingleId;
 
   // Combined-mode state
   const [combinedTxns, setCombinedTxns] = useState([]);
   const [combinedCats, setCombinedCats] = useState([]);
-  // Maps every category UUID (from any wallet) → merged category object
   const [combinedCatById, setCombinedCatById] = useState(new Map());
   const [combinedLoading, setCombinedLoading] = useState(false);
-
-  // Persist viewMode
-  useEffect(() => {
-    localStorage.setItem(VIEW_MODE_KEY, viewMode);
-  }, [viewMode]);
-
-  // Only force single mode once wallets have actually loaded (length > 0).
-  // Without the length guard this fires on mount when wallets=[] and
-  // hasMultiple is false, destroying the saved "all" preference.
-  useEffect(() => {
-    if (userWallets.length > 0 && !hasMultiple && viewMode === "all") setViewMode("single");
-  }, [userWallets.length, hasMultiple, viewMode]);
-
-  // When wallets first load and user has multiple, honour saved "all" preference
-  useEffect(() => {
-    if (hasMultiple && localStorage.getItem(VIEW_MODE_KEY) === "all") setViewMode("all");
-  }, [hasMultiple]);
 
   // Fetch combined data when in "all" mode
   const fetchCombined = useCallback(async () => {
@@ -86,14 +64,12 @@ export default function Dashboard() {
         })
       );
       const allTxns = results.flatMap((r) => r.transactions);
-      // Merge categories by label + type, keeping first UUID as canonical
       const catByLabel = new Map();
       const idToMerged = new Map();
       for (const r of results) {
         for (const c of r.categories) {
           const key = `${c.label}||${c.type}`;
           if (!catByLabel.has(key)) catByLabel.set(key, { ...c });
-          // Map this wallet's category UUID → the merged (canonical) category
           idToMerged.set(c.id, catByLabel.get(key));
         }
       }
@@ -108,11 +84,8 @@ export default function Dashboard() {
   }, [userWallets]);
 
   useEffect(() => {
-    if (viewMode === "all" && hasMultiple) fetchCombined();
-  }, [viewMode, hasMultiple, fetchCombined]);
-
-  // Determine which data to use based on view mode
-  const isAll = viewMode === "all" && hasMultiple;
+    if (isAll) fetchCombined();
+  }, [isAll, fetchCombined]);
 
   // Single-wallet data (existing behavior)
   const msd = wallet?.settings?.monthStartDay || 1;
@@ -130,9 +103,6 @@ export default function Dashboard() {
   const activeCats = isAll ? [...allExpCats, ...allIncCats] : singleAllC;
   const activeExpCats = isAll ? allExpCats : singleCats;
 
-  // Resolve category from a transaction's category ID.
-  // In combined mode, uses the ID→merged-category map so that category UUIDs
-  // from any wallet resolve to the canonical merged category.
   const findCat = (catId) => {
     if (isAll) return combinedCatById.get(catId) || null;
     return activeCats.find((c) => c.id === catId) || null;
@@ -142,7 +112,6 @@ export default function Dashboard() {
   const inc = periodTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const exp = periodTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
-  // Balance: in "all" mode use sum of period_balance from included wallets, in single mode use computed
   const bal = isAll
     ? userWallets.filter((w) => !w.exclude_combined).reduce((s, w) => s + Number(w.period_balance ?? 0), 0)
     : inc - exp;
@@ -165,7 +134,6 @@ export default function Dashboard() {
     : periodTxns.filter((t) => t.type === "expense");
   const topSrcTotal = topSrcTxns.reduce((s, t) => s + t.amount, 0) || 1;
 
-  // For top spending, merge by category label in combined mode
   const catTotals = (() => {
     if (isAll) {
       const map = new Map();
@@ -201,25 +169,18 @@ export default function Dashboard() {
 
   const recentTxns = [...activeTxns].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
-  // Exclude toggle handler
-  const handleToggleExclude = async (walletId, currentExclude) => {
-    try {
-      await api.toggleExcludeCombined(walletId, !currentExclude);
-      // refreshWallets updates wallets state, which recreates fetchCombined via
-      // the useCallback dep, which triggers the useEffect to re-fetch combined data.
-      await apiHelpers.refreshWallets();
-    } catch (err) {
-      console.error("[walletly] toggle exclude error:", err);
-    }
+  // Wallet card click: switch to single wallet view
+  const handleWalletClick = (wId) => {
+    setForcedSingleId(wId);
+    switchWallet(wId);
   };
 
   // Dropdown handler
   const handleWalletSelect = (value) => {
     if (value === "__all__") {
-      setViewMode("all");
+      setForcedSingleId(null);
     } else {
-      setViewMode("single");
-      switchWallet(value);
+      handleWalletClick(value);
     }
   };
 
@@ -233,13 +194,13 @@ export default function Dashboard() {
           <div style={{ color: "#475569", fontSize: 12 }}>Good day,</div>
           <div style={{ color: "#fff", fontWeight: 800, fontSize: 17 }}>{user?.name} {"\u{1F44B}"}</div>
         </div>
-        {hasMultiple ? (
+        {hasMultiple && (
           <select style={{ background: "#131c2e", border: "1px solid #1e293b", color: "#94a3b8", borderRadius: 8, padding: "5px 8px", fontSize: 11, cursor: "pointer" }}
             value={isAll ? "__all__" : session?.walletId} onChange={(e) => handleWalletSelect(e.target.value)}>
             <option value="__all__">All Wallets</option>
             {userWallets.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
-        ) : userWallets.length === 1 ? null : null}
+        )}
       </div>
 
       {/* Combined loading indicator */}
@@ -260,7 +221,7 @@ export default function Dashboard() {
             <button onClick={() => setBalVis(!balVis)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#475569" }}>{balVis ? "\u{1F441}\uFE0F" : "\u{1F648}"}</button>
           </div>
           {isAll && includedCount === 0 ? (
-            <div style={{ color: "#f59e0b", fontSize: 12 }}>All wallets are hidden</div>
+            <div style={{ color: "#f59e0b", fontSize: 12 }}>All wallets are hidden — change in Account settings</div>
           ) : (
             <div style={{ display: "flex", gap: 10 }}>
               <div style={{ flex: 1, background: "#ffffff07", borderRadius: 10, padding: "8px 10px" }}>
@@ -287,22 +248,14 @@ export default function Dashboard() {
             const wBal = !isAll && w.id === session?.walletId ? (inc - exp) : Number(w.period_balance ?? 0);
             const excluded = w.exclude_combined;
             return (
-              <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", opacity: excluded ? 0.4 : 1 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 11, background: `linear-gradient(135deg,${GRAD[i % 4][0]},${GRAD[i % 4][1]})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, cursor: "pointer" }}
-                  onClick={() => { setViewMode("single"); switchWallet(w.id); }}>{"\u{1F4B3}"}</div>
-                <div style={{ flex: 1, cursor: "pointer" }} onClick={() => { setViewMode("single"); switchWallet(w.id); }}>
+              <div key={w.id} onClick={() => handleWalletClick(w.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer", opacity: isAll && excluded ? 0.4 : 1 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 11, background: `linear-gradient(135deg,${GRAD[i % 4][0]},${GRAD[i % 4][1]})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>{"\u{1F4B3}"}</div>
+                <div style={{ flex: 1 }}>
                   <div style={{ color: "#fff", fontWeight: 600, fontSize: 13 }}>{w.name}</div>
                   <div style={{ color: "#475569", fontSize: 11 }}>{(w.members || []).length} member{(w.members || []).length !== 1 ? "s" : ""}</div>
                 </div>
                 <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>{balVis ? fmtShort(wBal) : "\u2022\u2022\u2022\u2022"}</div>
-                {hasMultiple && (
-                  <button onClick={(e) => { e.stopPropagation(); handleToggleExclude(w.id, excluded); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: "2px 4px", color: excluded ? "#475569" : "#22d3ee", flexShrink: 0 }}
-                    title={excluded ? "Include in combined view" : "Exclude from combined view"}>
-                    {excluded ? "\u{1F441}\u200D\u{1F5E8}" : "\u{1F441}\uFE0F"}
-                  </button>
-                )}
-                {!hasMultiple && w.id === session?.walletId && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d3ee", flexShrink: 0 }} />}
+                {!isAll && w.id === session?.walletId && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#22d3ee", flexShrink: 0 }} />}
               </div>
             );
           })}
@@ -425,7 +378,6 @@ export default function Dashboard() {
             <div style={{ padding: 20, color: "#475569", textAlign: "center", fontSize: 13 }}>No transactions yet</div>
           ) : recentTxns.map((t, i) => {
             const cat = findCat(t.category);
-            // Find wallet color index for badge
             const wIdx = userWallets.findIndex((w) => w.id === (t._walletId || t.wallet_id));
             return (
               <div key={t.id} onClick={() => setPage("transactions")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < recentTxns.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer" }}>

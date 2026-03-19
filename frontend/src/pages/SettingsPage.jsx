@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useWallet } from "../context/WalletContext";
 import { useToast } from "../hooks/useToast";
+import { api } from "../api";
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, EMOJI_PALETTE, COLOR_PALETTE } from "../constants";
 import { getCurrentPeriodKey, getPeriodKey, todayStr } from "../utils/period";
 import { fmt } from "../utils/format";
@@ -347,13 +348,82 @@ export default function SettingsPage() {
               );
             })}
           </div>
-          <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b" }}>
+          <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b", marginBottom: 10 }}>
             <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Create New Wallet</div>
             <input style={D.inp} placeholder="Wallet name" value={nwn} onChange={(e) => setNwn(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createWallet()} />
             <button style={{ ...D.btn, width: "100%", padding: 11 }} onClick={createWallet}>
               Create Wallet
             </button>
           </div>
+          {userWallets.length > 1 && (
+            <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b" }}>
+              <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 3 }}>Combined View</div>
+              <div style={{ color: "#475569", fontSize: 11, marginBottom: 10 }}>
+                Choose which wallets are included in the combined dashboard view.
+              </div>
+              {userWallets.map((w, i) => {
+                const excluded = w.exclude_combined;
+                return (
+                  <div
+                    key={w.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 6px",
+                      borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none",
+                      opacity: excluded ? 0.45 : 1,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        background: ["#f59e0b22", "#10b98122", "#3b82f622", "#8b5cf622"][i % 4],
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 16,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {"\uD83D\uDCB3"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: "#fff", fontWeight: 600, fontSize: 12 }}>{w.name}</div>
+                      <div style={{ color: "#475569", fontSize: 10 }}>
+                        {excluded ? "Hidden from combined view" : "Included in combined view"}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api.toggleExcludeCombined(w.id, !excluded);
+                          await apiHelpers.refreshWallets();
+                        } catch (e) {
+                          showToast(e.message, "error");
+                        }
+                      }}
+                      style={{
+                        background: excluded ? "#1e293b" : "#22d3ee22",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "5px 10px",
+                        cursor: "pointer",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: excluded ? "#94a3b8" : "#22d3ee",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {excluded ? "Show" : "Hide"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 
