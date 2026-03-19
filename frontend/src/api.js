@@ -101,6 +101,9 @@ export const api = {
   createCategory: (walletId, data) =>
     request("POST", `/wallets/${walletId}/categories`, data),
 
+  updateCategory: (walletId, id, data) =>
+    request("PATCH", `/wallets/${walletId}/categories/${id}`, data),
+
   deleteCategory: (walletId, id) =>
     request("DELETE", `/wallets/${walletId}/categories/${id}`),
 

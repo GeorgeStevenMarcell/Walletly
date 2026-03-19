@@ -35,6 +35,8 @@ export default function SettingsPage() {
   const [adjBalance, setAdjBalance] = useState("");
   const [adjNote, setAdjNote] = useState("Balance adjustment");
   const [adjBusy, setAdjBusy] = useState(false);
+  // editCat: { id, icon, color, label, pickerOpen: "icon"|"color"|null }
+  const [editCat, setEditCat] = useState(null);
 
   const msd = settings.monthStartDay || 1;
   const pk = getCurrentPeriodKey(msd);
@@ -656,33 +658,62 @@ export default function SettingsPage() {
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {cats.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "8px 9px",
-                    background: "#0a0f1e",
-                    borderRadius: 9,
-                    border: `1px solid ${c.color}33`,
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>{c.icon}</span>
-                  <span
-                    style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  >
-                    {c.label}
-                  </span>
-                  <button
-                    onClick={() => setConfirmCat({ id: c.id, type: "e", label: c.label })}
-                    style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 13, padding: 1, flexShrink: 0 }}
-                  >
-                    {"\u2715"}
-                  </button>
-                </div>
-              ))}
+              {cats.map((c) => {
+                const isEditing = editCat?.id === c.id;
+                return (
+                  <div key={c.id} style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "8px 9px",
+                        background: isEditing ? "#131c2e" : "#0a0f1e",
+                        borderRadius: 9,
+                        border: `1px solid ${isEditing ? "#22d3ee" : c.color + "33"}`,
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: 16, cursor: "pointer" }}
+                        onClick={() => setEditCat(isEditing && editCat.pickerOpen === "icon" ? null : { id: c.id, icon: c.icon, color: c.color, label: c.label, pickerOpen: "icon" })}
+                      >{isEditing ? editCat.icon : c.icon}</span>
+                      <span
+                        style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      >
+                        {c.label}
+                      </span>
+                      <button
+                        onClick={() => setEditCat(isEditing && editCat.pickerOpen === "color" ? null : { id: c.id, icon: c.icon, color: c.color, label: c.label, pickerOpen: "color" })}
+                        style={{ width: 16, height: 16, borderRadius: 4, background: isEditing ? editCat.color : c.color, border: "1px solid #1e293b", cursor: "pointer", flexShrink: 0, padding: 0 }}
+                      />
+                      <button
+                        onClick={() => setConfirmCat({ id: c.id, type: "e", label: c.label })}
+                        style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 13, padding: 1, flexShrink: 0 }}
+                      >
+                        {"\u2715"}
+                      </button>
+                    </div>
+                    {isEditing && editCat.pickerOpen === "icon" && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 190, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {EMOJI_PALETTE.map((e) => (
+                          <button key={e} onClick={async () => {
+                            try { await apiHelpers.updateCategory(c.id, { icon: e }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                          }} style={{ fontSize: 17, background: e === c.icon ? "#22d3ee33" : "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5 }}>{e}</button>
+                        ))}
+                      </div>
+                    )}
+                    {isEditing && editCat.pickerOpen === "color" && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {COLOR_PALETTE.map((col) => (
+                          <button key={col} onClick={async () => {
+                            try { await apiHelpers.updateCategory(c.id, { color: col }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                          }} style={{ width: 26, height: 26, borderRadius: 6, background: col, border: col === c.color ? "3px solid #fff" : "2px solid transparent", cursor: "pointer" }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
           <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b" }}>
@@ -746,33 +777,62 @@ export default function SettingsPage() {
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {incomeCats.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "8px 9px",
-                    background: "#0a0f1e",
-                    borderRadius: 9,
-                    border: "1px solid #10b98133",
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>{c.icon}</span>
-                  <span
-                    style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  >
-                    {c.label}
-                  </span>
-                  <button
-                    onClick={() => setConfirmCat({ id: c.id, type: "i", label: c.label })}
-                    style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 13, padding: 1, flexShrink: 0 }}
-                  >
-                    {"\u2715"}
-                  </button>
-                </div>
-              ))}
+              {incomeCats.map((c) => {
+                const isEditing = editCat?.id === c.id;
+                return (
+                  <div key={c.id} style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "8px 9px",
+                        background: isEditing ? "#131c2e" : "#0a0f1e",
+                        borderRadius: 9,
+                        border: `1px solid ${isEditing ? "#22d3ee" : (c.color || "#10b981") + "33"}`,
+                      }}
+                    >
+                      <span
+                        style={{ fontSize: 16, cursor: "pointer" }}
+                        onClick={() => setEditCat(isEditing && editCat.pickerOpen === "icon" ? null : { id: c.id, icon: c.icon, color: c.color || "#10b981", label: c.label, pickerOpen: "icon" })}
+                      >{isEditing ? editCat.icon : c.icon}</span>
+                      <span
+                        style={{ flex: 1, color: "#fff", fontWeight: 600, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      >
+                        {c.label}
+                      </span>
+                      <button
+                        onClick={() => setEditCat(isEditing && editCat.pickerOpen === "color" ? null : { id: c.id, icon: c.icon, color: c.color || "#10b981", label: c.label, pickerOpen: "color" })}
+                        style={{ width: 16, height: 16, borderRadius: 4, background: c.color || "#10b981", border: "1px solid #1e293b", cursor: "pointer", flexShrink: 0, padding: 0 }}
+                      />
+                      <button
+                        onClick={() => setConfirmCat({ id: c.id, type: "i", label: c.label })}
+                        style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 13, padding: 1, flexShrink: 0 }}
+                      >
+                        {"\u2715"}
+                      </button>
+                    </div>
+                    {isEditing && editCat.pickerOpen === "icon" && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 190, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {EMOJI_PALETTE.map((e) => (
+                          <button key={e} onClick={async () => {
+                            try { await apiHelpers.updateCategory(c.id, { icon: e }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                          }} style={{ fontSize: 17, background: e === c.icon ? "#22d3ee33" : "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5 }}>{e}</button>
+                        ))}
+                      </div>
+                    )}
+                    {isEditing && editCat.pickerOpen === "color" && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {COLOR_PALETTE.map((col) => (
+                          <button key={col} onClick={async () => {
+                            try { await apiHelpers.updateCategory(c.id, { color: col }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                          }} style={{ width: 26, height: 26, borderRadius: 6, background: col, border: col === (c.color || "#10b981") ? "3px solid #fff" : "2px solid transparent", cursor: "pointer" }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </>

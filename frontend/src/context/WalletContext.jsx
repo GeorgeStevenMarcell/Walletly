@@ -194,6 +194,10 @@ export function WalletProvider({ children }) {
       await api.deleteCategory(activeWalletId, id);
       await refreshCategories();
     },
+    updateCategory: async (id, data) => {
+      await api.updateCategory(activeWalletId, id, data);
+      await refreshCategories();
+    },
     updateSettings: async (settings) => {
       await api.updateSettings(activeWalletId, { monthStartDay: settings.monthStartDay, dayStartHour: settings.dayStartHour });
       await refreshWallets();

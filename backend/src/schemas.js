@@ -116,6 +116,15 @@ exports.createCategoryBody = z.object({
   sortOrder: z.coerce.number().int().min(0).max(999).default(0),
 });
 
+exports.updateCategoryBody = z.object({
+  label: z.string().trim().min(1).max(50).optional(),
+  icon: z.string().max(10).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "color must be a hex code like #ff0000")
+    .optional(),
+});
+
 // ── Budgets ─────────────────────────────────────────────────────────────────
 
 exports.upsertBudgetBody = z.object({

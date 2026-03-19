@@ -4,7 +4,7 @@ const { query } = require("../db/postgres");
 const { authenticate, requireWalletMember } = require("../middleware/auth");
 const { cached, invalidate } = require("../db/redis");
 const { validate, validateQuery } = require("../middleware/validate");
-const { createCategoryBody, upsertBudgetBody, budgetQuery, statsQuery } = require("../schemas");
+const { createCategoryBody, updateCategoryBody, upsertBudgetBody, budgetQuery, statsQuery } = require("../schemas");
 
 router.use(authenticate, requireWalletMember);
 
@@ -35,6 +35,24 @@ router.post("/categories", validate(createCategoryBody), async (req, res, next) 
     );
     await invalidate(`wallet:${req.walletId}:categories`);
     res.status(201).json(c);
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/wallets/:walletId/categories/:id
+router.patch("/categories/:id", validate(updateCategoryBody), async (req, res, next) => {
+  const { label, icon, color } = req.body;
+  try {
+    const { rows: [c] } = await query(
+      `UPDATE categories
+       SET label = COALESCE($1, label),
+           icon  = COALESCE($2, icon),
+           color = COALESCE($3, color)
+       WHERE id=$4 AND wallet_id=$5 RETURNING *`,
+      [label ?? null, icon ?? null, color ?? null, req.params.id, req.walletId]
+    );
+    if (!c) return res.status(404).json({ error: "Category not found" });
+    await invalidate(`wallet:${req.walletId}:categories`);
+    res.json(c);
   } catch (err) { next(err); }
 });
 
