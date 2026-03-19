@@ -94,7 +94,7 @@ export default function BudgetPage() {
         <div>
           <div style={{ fontSize: 20, fontWeight: 900, color: "#fff" }}>Budgets</div>
           <div style={{ color: "#475569", fontSize: 12, marginTop: 2 }}>
-            {startStr} \u2013 {endStr} · {daysLeft} days left
+            {startStr} {"\u2013"} {endStr} · {daysLeft} days left
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

@@ -172,7 +172,7 @@ export default function BudgetDetail({ cat, txns, pStart, pEnd, totalDays, daysP
             {cat.icon} {cat.label}
           </div>
           <div style={{ color: "#475569", fontSize: 11 }}>
-            {startStr} \u2013 {endStr} · {daysLeft} days left
+            {startStr} {"\u2013"} {endStr} · {daysLeft} days left
           </div>
         </div>
         <button
