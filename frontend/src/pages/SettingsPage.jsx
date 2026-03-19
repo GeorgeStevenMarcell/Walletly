@@ -96,7 +96,7 @@ export default function SettingsPage() {
         ))}
         <div style={{ width: "100%", display: "flex", gap: 4, marginTop: 4, borderTop: "1px solid #1e293b", paddingTop: 6 }}>
           <input style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 6, color: "#fff", fontSize: 14, width: 40, textAlign: "center", padding: "3px 2px" }}
-            placeholder="\u{1F60A}" value={customEmojiInput} onChange={(e) => setCustomEmojiInput(e.target.value)} />
+            placeholder={"\u{1F60A}"} value={customEmojiInput} onChange={(e) => setCustomEmojiInput(e.target.value)} />
           <button onClick={() => addCustomEmoji(customEmojiInput)}
             style={{ background: "#22d3ee22", border: "none", borderRadius: 6, color: "#22d3ee", fontSize: 10, fontWeight: 700, cursor: "pointer", padding: "3px 8px" }}>+ Add</button>
         </div>
