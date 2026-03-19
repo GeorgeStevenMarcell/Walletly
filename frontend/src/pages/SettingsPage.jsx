@@ -38,6 +38,98 @@ export default function SettingsPage() {
   // editCat: { id, icon, color, label, pickerOpen: "icon"|"color"|null }
   const [editCat, setEditCat] = useState(null);
 
+  // Custom emoji/color palettes persisted in localStorage
+  const CUSTOM_EMOJI_KEY = "walletly_custom_emojis";
+  const CUSTOM_COLOR_KEY = "walletly_custom_colors";
+  const [customEmojis, setCustomEmojis] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_EMOJI_KEY)) || []; } catch { return []; }
+  });
+  const [customColors, setCustomColors] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(CUSTOM_COLOR_KEY)) || []; } catch { return []; }
+  });
+  const [customEmojiInput, setCustomEmojiInput] = useState("");
+  const [customColorInput, setCustomColorInput] = useState("#");
+
+  const allEmojis = [...EMOJI_PALETTE, ...customEmojis];
+  const allColors = [...COLOR_PALETTE, ...customColors];
+
+  function addCustomEmoji(emoji) {
+    const trimmed = emoji.trim();
+    if (!trimmed || allEmojis.includes(trimmed)) return;
+    const updated = [...customEmojis, trimmed];
+    setCustomEmojis(updated);
+    localStorage.setItem(CUSTOM_EMOJI_KEY, JSON.stringify(updated));
+    setCustomEmojiInput("");
+  }
+  function removeCustomEmoji(emoji) {
+    const updated = customEmojis.filter((e) => e !== emoji);
+    setCustomEmojis(updated);
+    localStorage.setItem(CUSTOM_EMOJI_KEY, JSON.stringify(updated));
+  }
+  function addCustomColor(hex) {
+    const trimmed = hex.trim().toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(trimmed) || allColors.includes(trimmed)) return;
+    const updated = [...customColors, trimmed];
+    setCustomColors(updated);
+    localStorage.setItem(CUSTOM_COLOR_KEY, JSON.stringify(updated));
+    setCustomColorInput("#");
+  }
+  function removeCustomColor(hex) {
+    const updated = customColors.filter((c) => c !== hex);
+    setCustomColors(updated);
+    localStorage.setItem(CUSTOM_COLOR_KEY, JSON.stringify(updated));
+  }
+
+  // Render helpers for emoji/color pickers with "add custom" row
+  function renderEmojiPicker(onSelect) {
+    return (
+      <>
+        {allEmojis.map((e) => (
+          <button key={e} onClick={() => onSelect(e)}
+            style={{ fontSize: 17, background: "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5, position: "relative" }}>
+            {e}
+            {customEmojis.includes(e) && (
+              <span onClick={(ev) => { ev.stopPropagation(); removeCustomEmoji(e); }}
+                style={{ position: "absolute", top: -2, right: -2, fontSize: 8, color: "#f87171", cursor: "pointer", lineHeight: 1 }}>{"\u2715"}</span>
+            )}
+          </button>
+        ))}
+        <div style={{ width: "100%", display: "flex", gap: 4, marginTop: 4, borderTop: "1px solid #1e293b", paddingTop: 6 }}>
+          <input style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 6, color: "#fff", fontSize: 14, width: 40, textAlign: "center", padding: "3px 2px" }}
+            placeholder="\u{1F60A}" value={customEmojiInput} onChange={(e) => setCustomEmojiInput(e.target.value)} />
+          <button onClick={() => addCustomEmoji(customEmojiInput)}
+            style={{ background: "#22d3ee22", border: "none", borderRadius: 6, color: "#22d3ee", fontSize: 10, fontWeight: 700, cursor: "pointer", padding: "3px 8px" }}>+ Add</button>
+        </div>
+      </>
+    );
+  }
+
+  function renderColorPicker(onSelect, currentColor) {
+    return (
+      <>
+        {allColors.map((col) => (
+          <div key={col} style={{ position: "relative", display: "inline-block" }}>
+            <button onClick={() => onSelect(col)}
+              style={{ width: 26, height: 26, borderRadius: 6, background: col, border: col === currentColor ? "3px solid #fff" : "2px solid transparent", cursor: "pointer" }} />
+            {customColors.includes(col) && (
+              <span onClick={(ev) => { ev.stopPropagation(); removeCustomColor(col); }}
+                style={{ position: "absolute", top: -3, right: -3, fontSize: 8, color: "#fff", background: "#ef4444", borderRadius: "50%", width: 12, height: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", lineHeight: 1 }}>{"\u2715"}</span>
+            )}
+          </div>
+        ))}
+        <div style={{ width: "100%", display: "flex", gap: 4, marginTop: 4, borderTop: "1px solid #1e293b", paddingTop: 6, alignItems: "center" }}>
+          <input type="color" value={customColorInput.length === 7 ? customColorInput : "#000000"}
+            onChange={(e) => setCustomColorInput(e.target.value)}
+            style={{ width: 28, height: 28, border: "none", borderRadius: 6, cursor: "pointer", padding: 0, background: "none" }} />
+          <input style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 6, color: "#fff", fontSize: 10, flex: 1, padding: "4px 6px", fontFamily: "monospace" }}
+            placeholder="#ff5500" value={customColorInput} onChange={(e) => setCustomColorInput(e.target.value)} />
+          <button onClick={() => addCustomColor(customColorInput)}
+            style={{ background: "#22d3ee22", border: "none", borderRadius: 6, color: "#22d3ee", fontSize: 10, fontWeight: 700, cursor: "pointer", padding: "3px 8px", whiteSpace: "nowrap" }}>+ Add</button>
+        </div>
+      </>
+    );
+  }
+
   const msd = settings.monthStartDay || 1;
   const pk = getCurrentPeriodKey(msd);
   const periodTxns = wallet.transactions.filter((t) => getPeriodKey(t.date, msd) === pk);
@@ -566,35 +658,8 @@ export default function SettingsPage() {
                     {nec.icon}
                   </button>
                   {eoOpen && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 44,
-                        left: 0,
-                        background: "#131c2e",
-                        border: "1px solid #1e293b",
-                        borderRadius: 11,
-                        padding: 7,
-                        zIndex: 200,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 2,
-                        width: 190,
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                      }}
-                    >
-                      {EMOJI_PALETTE.map((e) => (
-                        <button
-                          key={e}
-                          onClick={() => {
-                            setNec({ ...nec, icon: e });
-                            setEoOpen(false);
-                          }}
-                          style={{ fontSize: 17, background: "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5 }}
-                        >
-                          {e}
-                        </button>
-                      ))}
+                    <div style={{ position: "absolute", top: 44, left: 0, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 210, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                      {renderEmojiPicker((e) => { setNec({ ...nec, icon: e }); setEoOpen(false); })}
                     </div>
                   )}
                 </div>
@@ -608,40 +673,8 @@ export default function SettingsPage() {
                     style={{ width: 38, height: 38, borderRadius: 9, background: nec.color, border: "2px solid #1e293b", cursor: "pointer", display: "block" }}
                   />
                   {coOpen && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 44,
-                        left: 0,
-                        background: "#131c2e",
-                        border: "1px solid #1e293b",
-                        borderRadius: 11,
-                        padding: 7,
-                        zIndex: 200,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 3,
-                        width: 170,
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                      }}
-                    >
-                      {COLOR_PALETTE.map((col) => (
-                        <button
-                          key={col}
-                          onClick={() => {
-                            setNec({ ...nec, color: col });
-                            setCoOpen(false);
-                          }}
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: 6,
-                            background: col,
-                            border: col === nec.color ? "3px solid #fff" : "2px solid transparent",
-                            cursor: "pointer",
-                          }}
-                        />
-                      ))}
+                    <div style={{ position: "absolute", top: 44, left: 0, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                      {renderColorPicker((col) => { setNec({ ...nec, color: col }); setCoOpen(false); }, nec.color)}
                     </div>
                   )}
                 </div>
@@ -694,21 +727,17 @@ export default function SettingsPage() {
                       </button>
                     </div>
                     {isEditing && editCat.pickerOpen === "icon" && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 190, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-                        {EMOJI_PALETTE.map((e) => (
-                          <button key={e} onClick={async () => {
-                            try { await apiHelpers.updateCategory(c.id, { icon: e }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
-                          }} style={{ fontSize: 17, background: e === c.icon ? "#22d3ee33" : "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5 }}>{e}</button>
-                        ))}
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 210, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {renderEmojiPicker(async (e) => {
+                          try { await apiHelpers.updateCategory(c.id, { icon: e }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                        })}
                       </div>
                     )}
                     {isEditing && editCat.pickerOpen === "color" && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-                        {COLOR_PALETTE.map((col) => (
-                          <button key={col} onClick={async () => {
-                            try { await apiHelpers.updateCategory(c.id, { color: col }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
-                          }} style={{ width: 26, height: 26, borderRadius: 6, background: col, border: col === c.color ? "3px solid #fff" : "2px solid transparent", cursor: "pointer" }} />
-                        ))}
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {renderColorPicker(async (col) => {
+                          try { await apiHelpers.updateCategory(c.id, { color: col }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                        }, c.color)}
                       </div>
                     )}
                   </div>
@@ -732,35 +761,8 @@ export default function SettingsPage() {
                     {nic.icon}
                   </button>
                   {ioOpen && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 44,
-                        left: 0,
-                        background: "#131c2e",
-                        border: "1px solid #1e293b",
-                        borderRadius: 11,
-                        padding: 7,
-                        zIndex: 200,
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 2,
-                        width: 190,
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                      }}
-                    >
-                      {EMOJI_PALETTE.map((e) => (
-                        <button
-                          key={e}
-                          onClick={() => {
-                            setNic({ ...nic, icon: e });
-                            setIoOpen(false);
-                          }}
-                          style={{ fontSize: 17, background: "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5 }}
-                        >
-                          {e}
-                        </button>
-                      ))}
+                    <div style={{ position: "absolute", top: 44, left: 0, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 210, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                      {renderEmojiPicker((e) => { setNic({ ...nic, icon: e }); setIoOpen(false); })}
                     </div>
                   )}
                 </div>
@@ -813,21 +815,17 @@ export default function SettingsPage() {
                       </button>
                     </div>
                     {isEditing && editCat.pickerOpen === "icon" && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 190, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-                        {EMOJI_PALETTE.map((e) => (
-                          <button key={e} onClick={async () => {
-                            try { await apiHelpers.updateCategory(c.id, { icon: e }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
-                          }} style={{ fontSize: 17, background: e === c.icon ? "#22d3ee33" : "none", border: "none", cursor: "pointer", padding: 3, borderRadius: 5 }}>{e}</button>
-                        ))}
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 2, width: 210, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {renderEmojiPicker(async (e) => {
+                          try { await apiHelpers.updateCategory(c.id, { icon: e }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                        })}
                       </div>
                     )}
                     {isEditing && editCat.pickerOpen === "color" && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 170, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
-                        {COLOR_PALETTE.map((col) => (
-                          <button key={col} onClick={async () => {
-                            try { await apiHelpers.updateCategory(c.id, { color: col }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
-                          }} style={{ width: 26, height: 26, borderRadius: 6, background: col, border: col === (c.color || "#10b981") ? "3px solid #fff" : "2px solid transparent", cursor: "pointer" }} />
-                        ))}
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: "#131c2e", border: "1px solid #1e293b", borderRadius: 11, padding: 7, zIndex: 200, display: "flex", flexWrap: "wrap", gap: 3, width: 200, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                        {renderColorPicker(async (col) => {
+                          try { await apiHelpers.updateCategory(c.id, { color: col }); setEditCat(null); } catch (err) { showToast(err.message, "error"); }
+                        }, c.color || "#10b981")}
                       </div>
                     )}
                   </div>
