@@ -20,12 +20,16 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem(VIEW_MODE_KEY);
     if (saved === "all" || saved === "single") return saved;
-    return hasMultiple ? "all" : "single";
+    // wallets haven't loaded yet on first render, default to "all" —
+    // the effect below will correct to "single" once wallets arrive if only 1.
+    return "all";
   });
 
   // Combined-mode state
   const [combinedTxns, setCombinedTxns] = useState([]);
   const [combinedCats, setCombinedCats] = useState([]);
+  // Maps every category UUID (from any wallet) → merged category object
+  const [combinedCatById, setCombinedCatById] = useState(new Map());
   const [combinedLoading, setCombinedLoading] = useState(false);
 
   // Persist viewMode
@@ -33,10 +37,17 @@ export default function Dashboard() {
     localStorage.setItem(VIEW_MODE_KEY, viewMode);
   }, [viewMode]);
 
-  // If user goes from multi to single wallet, force single mode
+  // Only force single mode once wallets have actually loaded (length > 0).
+  // Without the length guard this fires on mount when wallets=[] and
+  // hasMultiple is false, destroying the saved "all" preference.
   useEffect(() => {
-    if (!hasMultiple && viewMode === "all") setViewMode("single");
-  }, [hasMultiple, viewMode]);
+    if (userWallets.length > 0 && !hasMultiple && viewMode === "all") setViewMode("single");
+  }, [userWallets.length, hasMultiple, viewMode]);
+
+  // When wallets first load and user has multiple, honour saved "all" preference
+  useEffect(() => {
+    if (hasMultiple && localStorage.getItem(VIEW_MODE_KEY) === "all") setViewMode("all");
+  }, [hasMultiple]);
 
   // Fetch combined data when in "all" mode
   const fetchCombined = useCallback(async () => {
@@ -44,6 +55,7 @@ export default function Dashboard() {
     if (!included.length) {
       setCombinedTxns([]);
       setCombinedCats([]);
+      setCombinedCatById(new Map());
       return;
     }
     setCombinedLoading(true);
@@ -74,16 +86,20 @@ export default function Dashboard() {
         })
       );
       const allTxns = results.flatMap((r) => r.transactions);
-      // Merge categories by label + type
-      const catMap = new Map();
+      // Merge categories by label + type, keeping first UUID as canonical
+      const catByLabel = new Map();
+      const idToMerged = new Map();
       for (const r of results) {
         for (const c of r.categories) {
           const key = `${c.label}||${c.type}`;
-          if (!catMap.has(key)) catMap.set(key, { ...c });
+          if (!catByLabel.has(key)) catByLabel.set(key, { ...c });
+          // Map this wallet's category UUID → the merged (canonical) category
+          idToMerged.set(c.id, catByLabel.get(key));
         }
       }
       setCombinedTxns(allTxns);
-      setCombinedCats([...catMap.values()]);
+      setCombinedCats([...catByLabel.values()]);
+      setCombinedCatById(idToMerged);
     } catch (err) {
       console.error("[walletly] combined fetch error:", err);
     } finally {
@@ -113,6 +129,14 @@ export default function Dashboard() {
   const activeTxns = isAll ? combinedTxns : singleTxns;
   const activeCats = isAll ? [...allExpCats, ...allIncCats] : singleAllC;
   const activeExpCats = isAll ? allExpCats : singleCats;
+
+  // Resolve category from a transaction's category ID.
+  // In combined mode, uses the ID→merged-category map so that category UUIDs
+  // from any wallet resolve to the canonical merged category.
+  const findCat = (catId) => {
+    if (isAll) return combinedCatById.get(catId) || null;
+    return activeCats.find((c) => c.id === catId) || null;
+  };
 
   const periodTxns = activeTxns.filter((t) => getPeriodKey(t.date, msd) === pk);
   const inc = periodTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
@@ -146,8 +170,8 @@ export default function Dashboard() {
     if (isAll) {
       const map = new Map();
       for (const t of topSrcTxns) {
-        const cat = activeCats.find((c) => c.id === t.category);
-        const key = cat?.label || t.category || "Other";
+        const cat = findCat(t.category);
+        const key = cat?.label || "Other";
         if (!map.has(key)) map.set(key, { label: key, icon: cat?.icon || "\u{1F4E6}", color: cat?.color || "#6b7280", total: 0 });
         map.get(key).total += t.amount;
       }
@@ -400,7 +424,7 @@ export default function Dashboard() {
           {recentTxns.length === 0 ? (
             <div style={{ padding: 20, color: "#475569", textAlign: "center", fontSize: 13 }}>No transactions yet</div>
           ) : recentTxns.map((t, i) => {
-            const cat = activeCats.find((c) => c.id === t.category);
+            const cat = findCat(t.category);
             // Find wallet color index for badge
             const wIdx = userWallets.findIndex((w) => w.id === (t._walletId || t.wallet_id));
             return (
