@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useWallet } from "../context/WalletContext";
 import { useToast } from "../hooks/useToast";
+import useInstallPrompt from "../hooks/useInstallPrompt";
 import { api } from "../api";
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES, EMOJI_PALETTE, COLOR_PALETTE } from "../constants";
 import { getCurrentPeriodKey, getPeriodKey, todayStr } from "../utils/period";
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const { wallet, wallets, session, switchWallet, apiHelpers } = useWallet();
   const { showToast } = useToast();
 
+  const { canInstall, canShowIOSGuide, isInstalled, promptInstall, showIOSGuide, setShowIOSGuide } = useInstallPrompt();
   const cats = wallet.expenseCategories || DEFAULT_EXPENSE_CATEGORIES;
   const incomeCats = wallet.incomeCategories || DEFAULT_INCOME_CATEGORIES;
   const settings = wallet.settings || { monthStartDay: 1, dayStartHour: 0 };
@@ -516,6 +518,61 @@ export default function SettingsPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Install App */}
+          {!isInstalled && (canInstall || canShowIOSGuide) && (
+            <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b", marginTop: 10 }}>
+              <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 3 }}>Install App</div>
+              <div style={{ color: "#475569", fontSize: 11, marginBottom: 10 }}>
+                Install Walletly on your device for a full-screen experience, faster access, and offline support.
+              </div>
+              {canInstall && (
+                <button
+                  onClick={async () => {
+                    const accepted = await promptInstall();
+                    if (accepted) showToast("App installed!", "success");
+                  }}
+                  style={{ ...D.btn, width: "100%", padding: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                >
+                  {"\u{1F4F2}"} Install Walletly
+                </button>
+              )}
+              {canShowIOSGuide && !canInstall && (
+                <>
+                  <button
+                    onClick={() => setShowIOSGuide(!showIOSGuide)}
+                    style={{ ...D.btn, width: "100%", padding: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                  >
+                    {"\u{1F4F2}"} How to Install
+                  </button>
+                  {showIOSGuide && (
+                    <div style={{ marginTop: 10, background: "#0a0f1e", borderRadius: 10, padding: 12 }}>
+                      <div style={{ color: "#fff", fontWeight: 600, fontSize: 12, marginBottom: 8 }}>Add to Home Screen (Safari)</div>
+                      <ol style={{ color: "#94a3b8", fontSize: 11, lineHeight: 1.7, margin: 0, paddingLeft: 18 }}>
+                        <li>Tap the <strong style={{ color: "#fff" }}>Share</strong> button <span style={{ fontSize: 14 }}>{"\u{2B06}\u{FE0F}"}</span> at the bottom of Safari</li>
+                        <li>Scroll down and tap <strong style={{ color: "#fff" }}>Add to Home Screen</strong></li>
+                        <li>Tap <strong style={{ color: "#fff" }}>Add</strong> in the top right</li>
+                      </ol>
+                      <div style={{ color: "#475569", fontSize: 10, marginTop: 8 }}>
+                        The app will appear on your home screen just like a native app.
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {isInstalled && (
+            <div style={{ background: "#131c2e", borderRadius: 14, padding: 14, border: "1px solid #1e293b", marginTop: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>{"\u2705"}</span>
+                <div>
+                  <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>App Installed</div>
+                  <div style={{ color: "#475569", fontSize: 11 }}>Walletly is installed on your device.</div>
+                </div>
+              </div>
             </div>
           )}
         </>

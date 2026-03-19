@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0a0f1e"/>
   <title>Walletly - Offline</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0f1e; color: #fff; font-family: 'Sora','Segoe UI',sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+    body { background: #0a0f1e; color: #fff; font-family: 'Sora','Segoe UI',sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; padding-top: calc(24px + env(safe-area-inset-top, 0px)); }
     .card { text-align: center; max-width: 320px; }
     .icon { font-size: 48px; margin-bottom: 16px; }
     h1 { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
     p { color: #94a3b8; font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
-    button { background: #22d3ee; color: #0a0f1e; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 800; font-size: 14px; cursor: pointer; }
+    button { background: #22d3ee; color: #0a0f1e; border: none; border-radius: 10px; padding: 12px 24px; font-weight: 800; font-size: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    button:active { opacity: 0.85; }
   </style>
 </head>
 <body>

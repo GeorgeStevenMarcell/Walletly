@@ -18,6 +18,20 @@ location /api/ {
     proxy_buffering    off;
 }
 
+# ── PWA manifest — correct MIME type ──────────────────────────────────────────
+location = /manifest.json {
+    types { application/manifest+json json; }
+    add_header Cache-Control "no-cache";
+    try_files $uri =404;
+}
+
+# ── Service Worker — must not be cached by browser ────────────────────────────
+location = /sw.js {
+    add_header Cache-Control "no-store, no-cache, must-revalidate";
+    add_header Service-Worker-Allowed "/";
+    try_files $uri =404;
+}
+
 # ── Static assets (JS/CSS chunks with content-hash filenames) ─────────────────
 location ~* \.(js|css|woff2?|ttf|eot|otf|ico|png|jpg|jpeg|gif|svg|webp)$ {
     expires     1y;
