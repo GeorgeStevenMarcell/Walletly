@@ -114,7 +114,7 @@ export default function Dashboard() {
 
   const bal = isAll
     ? userWallets.filter((w) => !w.exclude_combined).reduce((s, w) => s + Number(w.period_balance ?? 0), 0)
-    : inc - exp;
+    : Number(wallet?.period_balance ?? 0);
 
   const [balVis, setBalVis] = useState(true);
   const [reportTab, setReportTab] = useState("month");
@@ -245,7 +245,7 @@ export default function Dashboard() {
         </div>
         <div style={{ background: "#131c2e", borderRadius: 14, overflow: "hidden", border: "1px solid #1e293b" }}>
           {userWallets.map((w, i) => {
-            const wBal = !isAll && w.id === session?.walletId ? (inc - exp) : Number(w.period_balance ?? 0);
+            const wBal = Number(w.period_balance ?? 0);
             const excluded = w.exclude_combined;
             return (
               <div key={w.id} onClick={() => handleWalletClick(w.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: i < userWallets.length - 1 ? "1px solid #1e293b" : "none", cursor: "pointer", opacity: isAll && excluded ? 0.4 : 1 }}>

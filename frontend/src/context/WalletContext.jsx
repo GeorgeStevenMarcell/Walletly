@@ -167,15 +167,16 @@ export function WalletProvider({ children }) {
   const apiHelpers = {
     addTransaction: async (data) => {
       await api.createTransaction(activeWalletId, { type: data.type, amount: data.amount, categoryId: data.category, note: data.note, txnDate: data.date });
-      await refreshTransactions();
+      await Promise.all([refreshTransactions(), refreshWallets()]);
     },
     deleteTransaction: async (id) => {
       await api.deleteTransaction(activeWalletId, id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
+      await refreshWallets();
     },
     updateTransaction: async (id, data) => {
       await api.updateTransaction(activeWalletId, id, data);
-      await refreshTransactions();
+      await Promise.all([refreshTransactions(), refreshWallets()]);
     },
     upsertBudget: async (categoryId, amount) => {
       const period = todayStr().slice(0, 7);

@@ -39,6 +39,12 @@ export default function Transactions() {
     .filter((t) => tab === "all" || t.type === tab)
     .sort((a, b) => b.date.localeCompare(a.date));
 
+  const groupedByDate = txns.reduce((acc, t) => {
+    (acc[t.date] ||= []).push(t);
+    return acc;
+  }, {});
+  const groupedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a));
+
   async function del(id) {
     try {
       await apiHelpers.deleteTransaction(id);
@@ -131,45 +137,66 @@ export default function Transactions() {
         </select>
       </div>
 
-      {/* Transaction list */}
+      {/* Transaction list grouped by date */}
       {txns.length === 0 ? (
         <div style={{ color: "#475569", textAlign: "center", padding: 40, fontSize: 13 }}>No transactions found</div>
       ) : (
-        txns.map((t) => {
-          const cat = allCats.find((c) => c.id === t.category);
+        groupedDates.map((date) => {
+          const dayTxns = groupedByDate[date];
+          const dayInc = dayTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+          const dayExp = dayTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+          const dayNet = dayInc - dayExp;
           return (
-            <div
-              key={t.id}
-              onClick={() => openDetail(t)}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "12px 14px", background: "#131c2e",
-                borderRadius: 12, marginBottom: 6, border: "1px solid #1e293b",
-                cursor: "pointer",
-              }}
-            >
+            <div key={date} style={{ marginBottom: 14 }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 11,
-                background: (cat?.color || "#6b7280") + "22",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 19, flexShrink: 0,
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "0 4px 6px", marginTop: 4,
               }}>
-                {cat?.icon || "\u{1F4B1}"}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "#fff", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {cat?.label || "Transaction"}
+                <div style={{ color: "#94a3b8", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {fmtDate(date)}
                 </div>
-                <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>
-                  {fmtDate(t.date)}{t.note ? " \u00B7 " + t.note : ""}
+                <div style={{ color: dayNet >= 0 ? "#10b981" : "#f87171", fontSize: 11, fontWeight: 700 }}>
+                  {dayNet >= 0 ? "+" : "-"}{fmt(Math.abs(dayNet))}
                 </div>
               </div>
-              <div style={{
-                color: t.type === "income" ? "#10b981" : "#f87171",
-                fontWeight: 700, fontSize: 13, flexShrink: 0, textAlign: "right",
-              }}>
-                {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
-              </div>
+              {dayTxns.map((t) => {
+                const cat = allCats.find((c) => c.id === t.category);
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => openDetail(t)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "12px 14px", background: "#131c2e",
+                      borderRadius: 12, marginBottom: 6, border: "1px solid #1e293b",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 11,
+                      background: (cat?.color || "#6b7280") + "22",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 19, flexShrink: 0,
+                    }}>
+                      {cat?.icon || "\u{1F4B1}"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: "#fff", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cat?.label || "Transaction"}
+                      </div>
+                      <div style={{ color: "#475569", fontSize: 11, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {t.note || (t.type === "income" ? "Income" : "Expense")}
+                      </div>
+                    </div>
+                    <div style={{
+                      color: t.type === "income" ? "#10b981" : "#f87171",
+                      fontWeight: 700, fontSize: 13, flexShrink: 0, textAlign: "right",
+                    }}>
+                      {t.type === "income" ? "+" : "-"}{fmt(t.amount)}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })
